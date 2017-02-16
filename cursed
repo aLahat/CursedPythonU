@@ -1,2 +1,287 @@
 #! /usr/bin/env python
+import time
+import sys
+if len(sys.argv)>1:
+	f =  sys.argv[1]
+	ram = open(f).read().split('\n')[:-1]
+	if len(ram)>2**8:
+		raise Exception('program too long, no more than 255 instructions')
+		sys.exit()
+	if filter(lambda x: len(x)!=8,ram)!=[]:
+		raise Exception('not all commands are 8 bit')
+		sys.exit()
+RAM = ram+['0'*8]*(2**8-len(ram))
+del ram
+import curses
+cmdD={		'1000':'ADD',
+		'1001':'SHR',
+		'1010':'SHL',
+		'1011':'NOT',
+		'1100':'AND',
+		'1101':'OR',
+		'1110':'XOR',
+		'1111':'CMP',
+		'0000':'LOAD',
+		'0001':'STORE',
+		'0010':'DATA',
+		'0011':'JMPR',
+		'0100':'JMP',
+		'0101':'JMPIF',
+		'0110':'CLF',
+		'0111':'OUT',
+		}
+BIN = {'00':0,'01':1,'10':2,'11':3}
+def translate(cmd):
+	out = []
+	try:	out.append(cmdD[cmd[:4]])
+	except: out.append('')
+	if out[0]=='JMPIF':
+		out = out+filter(lambda x: x!='0',[b if a=='1' else '0' for a,b in zip(cmd[4:8],list('CAEZ'))])
+	else:
+		try:	out.append(BIN[cmd[4:6]])
+		except: out.append('')
+		try:	out.append(BIN[cmd[6:8]])
+		except: out.append('')
+	return out
 
+
+instructions='''1000 ADD   RA,RB
+1001 SHR   RA,RB
+1010 SHL   RA,RB
+1011 NOT   RA,RB
+1100 AND   RA,RB
+1101 OR    RA,RB
+1110 XOR   RA,RB
+1111 CMP   RA,RB
+0000 LD    RA,RB
+0001 ST    RA,RB
+0010 DATA  RB,DATA
+0011 JUMPR RB
+0100 JMP   Addr
+0101 JMPIF CAEZ,Addr
+0110 CLF
+0111 OUT  RA
+'''
+speed = 1.0
+STEP = 0
+output = []
+cursorPos = 0
+IAR = 0
+IR = '0'*8
+#RAM = ['0'*8]*2**8
+registers = [	'00000000',
+		'00000000',
+		'00000000',
+		'00000000']
+ACC = '0'*8
+flags = {'C':0,'A':0,'E':0,'Z':0}
+
+highlighted  = 0
+myscreen = curses.initscr()
+curses.cbreak()
+def step():
+	global STEP
+	global IAR
+	global flags
+	global registers
+	global RAM
+	STEP += 1
+	CMD = translate(RAM[IAR])
+	if CMD[0]=='ADD':
+		a = int(registers[CMD[1]],2)
+		b = int(registers[CMD[2]],2)
+		x = str(bin(a+b)).split('b')[-1]
+		if len(x)>8:
+			flags['C']=1
+			registers[CMD[2]]=x[-8:]
+		else:
+			registers[CMD[2]]=x.rjust(8,'0')
+		IAR += 1
+		IAR  = IAR%2**8
+	if CMD[0]=='SHR':
+		registers[CMD[2]] = ('0'+registers[CMD[1]])[:8]
+		IAR += 1
+		IAR  = IAR%2**8
+		pass
+	if CMD[0]=='SHL':
+		registers[CMD[2]] = (registers[CMD[1]])+'0'[-8:]
+		IAR += 1
+		IAR  = IAR%2**8
+		pass
+
+	if CMD[0]=='NOT':
+		registers[CMD[2]]= ''.join(['1' if x=='0' else '0' for x in  registers[CMD[1]] ])
+		IAR += 1
+		IAR  = IAR%2**8
+	if CMD[0]=='AND':
+		registers[CMD[2]]= ''.join(['1' if a+b=='11' else '0' for a,b in  zip(registers[CMD[1]],registers[CMD[2]]) ])
+		IAR += 1
+		IAR  = IAR%2**8
+		pass
+	if CMD[0]=='OR':
+		registers[CMD[2]]= ''.join(['1' if '1' in [a,b] else '0' for a,b in  zip(registers[CMD[1]],registers[CMD[2]]) ])
+		IAR += 1
+		IAR  = IAR%2**8
+		pass
+	if CMD[0]=='XOR':
+		registers[CMD[2]]= ''.join(['1' if a+b in ['10','01'] else '0' for a,b in  zip(registers[CMD[1]],registers[CMD[2]]) ])
+		IAR += 1
+		IAR  = IAR%2**8
+		pass
+	if CMD[0]=='CMP':
+		a = registers[CMD[1]]
+		b = registers[CMD[2]]
+		if a==b: 		flags['E']='1'
+		if int(a,2)>int(b,2):	flags['A']='1'
+		if a == '0'*8:		flags['Z']='1'
+		IAR += 1
+		IAR  = IAR%2**8
+
+	if CMD[0]=='LOAD':
+		registers[CMD[2]] = RAM[int(registers[CMD[1]],2)]
+		IAR += 1
+		IAR  = IAR%2**8
+		pass
+	if CMD[0]=='STORE':
+		RAM[int(registers[CMD[1]],2)] = registers[CMD[2]]
+		IAR += 1
+		IAR  = IAR%2**8
+		pass
+	if CMD[0]=='DATA':
+		registers[CMD[1]]=RAM[(IAR+1)%2**8]
+                IAR += 2
+                IAR  = IAR%2**8
+	if CMD[0]=='JMPR':
+		IAR = int(registers[CMD[2]],2)
+	if CMD[0]=='JMP':
+		IAR = int(RAM[(IAR+1)%2**8],2)
+	if CMD[0]=='JMPIF':
+		for flag in CMD[1:]:
+			if flags[flag]=='1':
+				IAR = int(RAM[(IAR+1)%2**8],2)
+				return None
+		IAR += 1
+		IAR  = IAR%2**8
+	if CMD[0]=='CLF':
+		flags = {'C':0,'A':0,'E':0,'Z':0}
+		IAR += 1
+		IAR  = IAR%2**8
+	if CMD[0]=='OUT':
+		output.append(registers[CMD[1]])
+		IAR += 1
+		IAR  = IAR%2**8
+
+
+
+def refreshScreen(text =''):
+	myscreen.keypad(1)
+	myscreen.border(0)
+	#myscreen.addstr(1, 25, "Python curses in action!")
+	myscreen.addstr(1, 2, 'IAR:  '+str(IAR)+'    ')
+	myscreen.addstr(2, 2, 'Step: '+str(STEP)+'    ')
+	myscreen.addstr(1, 20, '\t'.join(map(str,translate(RAM[IAR]))).rjust(30,' '))
+	for i in range(16):
+		for j in range(16):
+			n= i+16*j
+			myscreen.addstr(i*2+3, j*9+2, str(n))
+			if n==IAR:
+				myscreen.addstr(i*2+4, j*9+2, RAM[n],curses.A_BOLD)
+				myscreen.addstr(i*2+4,j*9+2+cursorPos, RAM[n][cursorPos])
+			elif n==highlighted:
+				myscreen.addstr(i*2+4, j*9+2, RAM[n],curses.A_STANDOUT)
+				myscreen.addstr(i*2+4,j*9+2+cursorPos, RAM[n][cursorPos])
+			else:
+				myscreen.addstr(i*2+4, j*9+2, RAM[n])
+	for i in range(4): #print registers
+		myscreen.addstr(i+16*2+4, 2, 'R'+str(i)+':  '+registers[i])
+	#myscreen.addstr(36, 2, 'IR:  '+IR)
+
+	for n,flag in enumerate(list('CAEZ')):
+		myscreen.addstr(n+16*2+4, 16, flag+': '+str(flags[flag]))
+	for n,line in enumerate(instructions.split('\n')):
+		myscreen.addstr(n%4+16*2+4, 50+20*(n/4), line.replace(' ',':'))
+	cmds = translate(RAM[highlighted])
+	myscreen.addstr(36,24, ' '.join(map(str,cmds)) +'     ')
+	myscreen.addstr(37,24, str( int(RAM[highlighted],2)  )  +'     ')
+        curses.setsyx(1,1)
+	myscreen.addstr(1,120, str(text)+'      ')
+	myscreen.addstr(1,100, 'speed: '+str(speed)+'      ')
+	for n,out in enumerate(output[-15:][::-1]):
+		myscreen.addstr(2+n,147,out)
+
+
+	myscreen.refresh()
+	#myscreen.getch()
+refreshScreen()
+play=False
+t0 = time.clock()
+key = ''
+while key != ord('q'):
+    key = myscreen.getch()
+    myscreen.addch(20,25,key)
+    myscreen.refresh()
+    #cursor movement
+    prevHighlighted = highlighted
+    if key == curses.KEY_UP:
+	highlighted -= 1
+    elif key == curses.KEY_DOWN:
+	highlighted += 1
+    elif key == curses.KEY_LEFT:
+        highlighted -= 2**4
+    elif key == curses.KEY_RIGHT:
+        highlighted += 2**4
+    elif key in (48,49): # ZERO,one
+        cmd = list(RAM[highlighted])
+        if key == 48: cmd[cursorPos]='0'
+        else: 	      cmd[cursorPos]='1'
+	RAM[highlighted]=''.join(cmd)
+	cursorPos+=1
+
+    elif key == curses.KEY_BACKSPACE:
+	if cursorPos>0:cursorPos-=1
+    if cursorPos>=8:
+	cursorPos=0
+	highlighted +=1
+    if prevHighlighted != highlighted:
+	cursorPos = 0
+
+    if key == 10: #ENTER
+	step()
+    if key == 114: #r reset
+        IAR = 0
+        IR  = '0'*8
+        STEP = 0
+        #RAM = ['0'*8]*2**8
+        registers = [   '00000000',
+                        '00000000',
+                        '00000000',
+                        '00000000']
+        ACC = '0'*8
+        flags = {'C':0,'A':0,'E':0,'Z':0}
+    if key == 115: #s save ram to same file used to upload
+	curses.endwin()
+	file = raw_input('filename: ['+f+']: ')
+	if file =='': file = f
+	F = open(file,'w')
+	F.write('\n'.join(RAM))
+	F.close()
+        myscreen = curses.initscr()
+        curses.cbreak()
+    if key == 43: #+
+        speed = speed * 2
+    if key == 45: #-
+        speed = speed / 2
+    #if key == 32: #space
+    #    play = not(play)
+    #if play:
+    #    #if (time.clock()-t0)>speed:#
+    #    while True:
+    #            step()
+    #            refreshScreen()
+    highlighted = highlighted % 2**8
+    refreshScreen()
+
+curses.endwin()
+
+
+print output
