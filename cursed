@@ -10,6 +10,7 @@ if len(sys.argv)>1:
 	if filter(lambda x: len(x)!=8,ram)!=[]:
 		raise Exception('not all commands are 8 bit')
 		sys.exit()
+else: ram=[]
 RAM = ram+['0'*8]*(2**8-len(ram))
 del ram
 import curses
