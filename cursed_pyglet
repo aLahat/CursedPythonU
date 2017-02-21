@@ -2,6 +2,7 @@
 from time import sleep
 import sys
 import pyglet
+from glob import glob
 from pyglet.window import key
 from sortedcontainers import SortedDict
 window = pyglet.window.Window()
@@ -10,34 +11,41 @@ label = pyglet.text.Label('Hello, world',
                           font_size=36,
                           x=window.width//2, y=window.height//2,
                           anchor_x='center', anchor_y='center')
+
 class menu:
 	def __init__(self):
 		pass
 		self.mode = self.main
-		self.pos  = 0
+		self.pos  = -1
 		self.items=[]
 	def __call__(self):
 		self.mode()
-	def main(self):
-		items = SortedDict(
-				{'start':self.start,
-				'load':self.load,
-				'exit':self.exit}
-			)
-		self.items=items
-		self.pos = self.pos%len(items)
-		for n,i in enumerate(items):
+		self.pos = self.pos%len(self.items)
+		for n,i in enumerate(self.items):
 			if self.pos ==  n: i=i.upper()
 			pyglet.text.Label(	i,
 						font_size=36,
 						x=window.width//2,
-						y=window.height-(n+1)*window.height//(len(items)+5),
-						anchor_x='center',#anchor_y='center'
+						y=window.height-(n+1)*window.height//(len(self.items)+5),
+						anchor_x='center',#anchor_y='left'
 					).draw()
+
+	def main(self):
+		self.items = SortedDict(
+				{'start':self.start,
+				'load':self.load,
+				'exit':self.exit}
+			)
 	def start(self):
-		pass
+		self.items = SortedDict(
+				{'campaign':self.campaign,
+				 'sandbox':self.sandbox,
+				 'back':self.main}
+			)
 	def load(self):
 		pass
+	def campaign(self):pass
+	def sandbox(self):pass
 	def exit(self):
 		sys.exit()
 	def up(self):
@@ -47,13 +55,15 @@ class menu:
 	def enter(self):
 		option = self.items.keys()[self.pos]
 		self.mode = self.items[option]
+		self.pos=-1
 
 mode = 'menu'
 m = menu()
 @window.event
 def on_draw():
 	window.clear()
-	m()
+	if mode == 'menu':
+		m()
 
 @window.event
 def on_key_press(symbol, modifiers):
