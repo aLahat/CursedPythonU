@@ -1,0 +1,68 @@
+#! /usr/bin/env python
+from time import sleep
+import sys
+import pyglet
+from pyglet.window import key
+from sortedcontainers import SortedDict
+window = pyglet.window.Window()
+label = pyglet.text.Label('Hello, world',
+                          font_name='Times New Roman',
+                          font_size=36,
+                          x=window.width//2, y=window.height//2,
+                          anchor_x='center', anchor_y='center')
+class menu:
+	def __init__(self):
+		pass
+		self.mode = self.main
+		self.pos  = 0
+		self.items=[]
+	def __call__(self):
+		self.mode()
+	def main(self):
+		items = SortedDict(
+				{'start':self.start,
+				'load':self.load,
+				'exit':self.exit}
+			)
+		self.items=items
+		self.pos = self.pos%len(items)
+		for n,i in enumerate(items):
+			if self.pos ==  n: i=i.upper()
+			pyglet.text.Label(	i,
+						font_size=36,
+						x=window.width//2,
+						y=window.height-(n+1)*window.height//(len(items)+5),
+						anchor_x='center',#anchor_y='center'
+					).draw()
+	def start(self):
+		pass
+	def load(self):
+		pass
+	def exit(self):
+		sys.exit()
+	def up(self):
+		self.pos -=1
+	def down(self):
+		self.pos +=1
+	def enter(self):
+		option = self.items.keys()[self.pos]
+		self.mode = self.items[option]
+
+mode = 'menu'
+m = menu()
+@window.event
+def on_draw():
+	window.clear()
+	m()
+
+@window.event
+def on_key_press(symbol, modifiers):
+	if symbol ==key.UP:
+		m.up()
+	if symbol ==key.DOWN:
+		m.down()
+	if symbol ==key.ENTER:
+		m.enter()
+
+pyglet.app.run()
+
