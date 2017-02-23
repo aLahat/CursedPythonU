@@ -1,0 +1,8 @@
+DESCRIPTION:'output each input'
+
+def INPUT():
+	return ['10110001']
+def OUTPUT(input):
+	return input[::-1]
+
+
