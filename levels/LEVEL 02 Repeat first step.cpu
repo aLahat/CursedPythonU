@@ -1,0 +1,15 @@
+def DESCRIPTION():
+	return 'For each input item just output said item. But this time on steroids'
+
+def HINT():
+	return 'Maybe jump for a loop (say apple)'
+
+def INPUT():
+	import random
+	return [''.join([random.choice(['0','1']) for _ in range(8)]) for _ in range(20)]
+
+def OUTPUT(input=None):
+	return input
+
+def RAM():
+	return ['0'*8]*2**8

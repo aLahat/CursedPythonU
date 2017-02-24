@@ -7,7 +7,9 @@ import pyglet
 import time
 import sys
 import curses
+import re
 import random
+from glob import glob
 
 def col_major(alist, sublen):
 	#turns list to nested list (matrix)
@@ -101,10 +103,13 @@ def describe(game,IAR):
 
 
 class CPU:
-	pass
 	def __init__(self,file=None):
 		if file == None: self.RAM = ['0'*8]*(2**8)
 		else: 		 self.RAM = self.load(file)
+
+		self.expectedOut = None
+
+		self.origRAM = self.RAM[:]
 		self.fontSize	= 14
 		self.run	= False
 		self.speeds	= [0.01,0.1,0.25,0.5,1]
@@ -116,6 +121,7 @@ class CPU:
 		self.cursorPos	= 0
 		self.IAR 	= 0
 		self.IR 	= '0'*8
+		self.success	= False
 		#RAM = ['0'*8]*2**8
 		play=False
 		t0 = time.clock()
@@ -128,7 +134,6 @@ class CPU:
 		self.highlighted  = 0
 		#myscreen = curses.initscr()
 		#curses.cbreak()
-
 	def load(self,file):
 		ram = open(f).read().split('\n')[:-1]
 		if len(ram)>2**8:
@@ -138,8 +143,8 @@ class CPU:
 			raise Exception('not all commands are 8 bit')
 			sys.exit()
 		return ram
-
 	def step(self,dt=0):
+		if self.output == self.expectedOut: self.success=True
 		self.STEP += 1
 		self.CMD = translate(self.RAM[self.IAR])
 		if self.CMD[0]=='ADD':
@@ -223,7 +228,6 @@ class CPU:
 				self.output.append(self.registers[b])
 			self.IAR += 1
 			self.IAR  = self.IAR%2**8
-
 	def refreshScreen(self,text =''):
 		'''
 		myscreen.keypad(1)
@@ -264,275 +268,418 @@ class CPU:
 	def input(self,input):
 		if   type(input)==str: self.input.append(input)
 		elif type(input)==list:self.input=self.input+input
+	def action_upHighlighted(self):
+		self.highlighted=(self.highlighted-1)%2**8
+	def action_downHighlighted(self):
+		self.highlighted=(self.highlighted+1)%2**8
+	def action_leftCursor(self):
+		self.cursorPos = (self.cursorPos-1)%8
+	def action_rightCursor(self):
+		self.cursorPos = (self.cursorPos+1)%8
+	def action_0(self):
+		cmd = list(self.RAM[self.highlighted])
+		cmd[self.cursorPos]='0'
+		self.RAM[self.highlighted]=''.join(cmd)
+		self.cursorPos = (self.cursorPos+1)%8
+	def action_1(self):
+		cmd = list(self.RAM[self.highlighted])
+		cmd[self.cursorPos]='1'
+		self.RAM[self.highlighted]=''.join(cmd)
+		self.cursorPos = (self.cursorPos+1)%8
+	def action_speedUp(self):
+		if self.speedi > 0:
+			self.speedi = self.speedi-1
+		self.speed = self.speeds[self.speedi]
+		if self.run:
+			clock.unschedule(self.step)
+			clock.schedule_interval(self.step,self.speed)
+	def action_speedDown(self):
+		if len(self.speeds)-1 > self.speedi:
+			self.speedi = self.speedi+1
+		self.speed = self.speeds[self.speedi]
+		if self.run:
+			clock.unschedule(self.step)
+			clock.schedule_interval(self.step,self.speed)
+	def reset(self):
+		self.IAR = 0
+		self.IR  = '0'*8
+		self.STEP = 0
+		#RAM = ['0'*8]*2**8
+		self.registers = ['00000000',
+						'00000000',
+						'00000000',
+						'00000000']
+		self.ACC = '0'*8
+		self.flags = {'carry':0,'larger':0,'equal':0,'zero':0}
+	def resetRAM(self):
+		self.reset()
+		self.RAM = self.origRAM
+	def play(self):
+		self.run = not(self.run)
+		if self.run:
+			clock.schedule_interval(self.step,self.speed)
+		else:
+			clock.unschedule(self.step)
 
-	def play(self,keyPress):
-		prevHighlighted = self.highlighted
-		if   keyPress == key.UP:
-			self.highlighted -= 1
-		elif keyPress == key.DOWN:
-			self.highlighted += 1
-		elif keyPress == key.LEFT:
-			self.cursorPos = (self.cursorPos-1)%8
-		elif keyPress == key.RIGHT:
-			self.cursorPos = (self.cursorPos+1)%8
+class LEVELMENU:
+	def __init__(self,game):
+		self.game=game
+		self.selected = 0
+		self.files = sorted(glob('levels/*.cpu'))
+	def select(self):
+		selected = self.files[self.selected]
+		load(self.game,selected)
+		unloadMenu()
+	def up(self):
+		self.selected =(self.selected+1)%len(self.files)
+		self.files = sorted(glob('levels/*.cpu'))
 
-		elif keyPress in (key.NUM_0,key.NUM_1): # ZERO,one
-			cmd = list(self.RAM[self.highlighted])
-			if keyPress == key.NUM_0: cmd[self.cursorPos]='0'
-			if keyPress == key.NUM_1: cmd[self.cursorPos]='1'
-			self.RAM[self.highlighted]=''.join(cmd)
-			self.cursorPos = (self.cursorPos+1)%8
-		elif keyPress == key.BACKSPACE:
-			if self.cursorPos>0:self.cursorPos-=1
+	def down(self):
+		self.selected =(self.selected-1)%len(self.files)
+		self.files = sorted(glob('levels/*.cpu'))
 
-		if keyPress == key.ENTER: #ENTER
-			self.step()
-		if keyPress == key.R: #r reset
-			self.IAR = 0
-			self.IR  = '0'*8
-			self.STEP = 0
-			#RAM = ['0'*8]*2**8
-			self.registers = ['00000000',
-					'00000000',
-					'00000000',
-					'00000000']
-			self.ACC = '0'*8
-			self.flags = {'C':0,'A':0,'E':0,'Z':0}
-		if keyPress == key.S: #s save ram to same file used to upload
-			file = 'tmp.ram'
-			#file = raw_input('filename: ['+f+']: ')
-			if file =='': file = f
-			F = open(file,'w')
-			F.write('\n'.join(self.RAM))
-			F.close()
-		if keyPress in [65451,43]: #+
-			if self.speedi > 0:
-				self.speedi = self.speedi-1
-			self.speed = self.speeds[self.speedi]
-			if self.run:
-				clock.unschedule(self.step)
-				clock.schedule_interval(self.step,self.speed)
-		if keyPress in [45,65453]: #-
-			if len(self.speeds)-1 > self.speedi:
-				self.speedi = self.speedi+1
-			self.speed = self.speeds[self.speedi]
-			if self.run:
-				clock.unschedule(self.step)
-				clock.schedule_interval(self.step,self.speed)
-		if keyPress == key.SPACE: #space
-			self.run = not(self.run)
-			if self.run:
-				clock.schedule_interval(self.step,self.speed)
-			else:
-				clock.unschedule(self.step)
-		self.highlighted = self.highlighted % 2**8
+SHIFT=False
 game = CPU()
-game.RAM[0]='00100000'
-game.RAM[1]='00000001'
-game.RAM[2]='01111101'
-game.RAM[3]='10000001'
-game.RAM[4]='01000000'
-game.RAM[5]='00000010'
-display=['IO','HELP']
+menu = LEVELMENU(game)
+key_bindings_game={
+	(key.H,16)		:('Help',		lambda :display.append(display.pop(0))),
+	(key.H,17)		:('Help',		lambda :display.insert(0,display.pop())),
+	(key.UP,16)		:('',			game.action_upHighlighted),
+	(key.DOWN,16)	:('',			game.action_downHighlighted),
+	(key.LEFT,16)	:('',			game.action_leftCursor),
+	(key.RIGHT,16)	:('',			game.action_rightCursor),
+	(key.NUM_0,16)	:('0',			game.action_0),
+	(key.NUM_1,16)	:('1',			game.action_1),
+	(key._0,16)		:('0',			game.action_0),
+	(key._1,16)		:('1',			game.action_1),
+	(key.ENTER,16)	:('Step',		game.step),
+	(key.R,16)		:('Reset',		game.reset),
+	(key.R,17)		:('ResetRAM',	game.resetRAM),
+	(65451,16)		:('Speed+',		game.action_speedUp),
+	(43,16)			:('Speed+',		game.action_speedUp),
+	(65453,16)		:('Speed-',		game.action_speedDown),
+	(45,16)			:('Speed-',		game.action_speedDown),
+	(key.SPACE,16)	:('Play/Pause',	game.play),
+	(key.L,16)		:('Load',		lambda : loadMenu()),
+}
+key_bindings_menu={
+	(key.H,16)		:('Help',		lambda :display.append(display.pop(0))),
+	(key.H,17)		:('Help',		lambda :display.insert(0,display.pop())),
+	(key.UP,16)		:('',			menu.up),
+	(key.DOWN,16)	:('',			menu.down),
+	(key.ENTER,16)	:('select',		menu.select),
+	(key.L,16)		:('back',		lambda : unloadMenu()),
+	(key.BACKSPACE,16):('back',		lambda : unloadMenu()),
+
+}
+
+KEYS_BINDINGS = key_bindings_game
+display=['IO','HELP','DESCRIPTION']
 pyglet.font.add_file('assets/Andale-Mono.ttf')
 Font = 'Andale-Mono.ttf'
 window = pyglet.window.Window()
 screen_elements={}
 prev_elements=screen_elements.copy()
 
-def load(file):
-	pass
+INPUT 	= lambda	: []
+OUTPUT	= lambda x	: [None]
+RAM 	= lambda 	: ['00000000']*2**8
+description=		  ''
+HINT	=			  ''
+def load(game, f):
+	exec(open(f).read())
+	game.input 			= INPUT()
+	game.RAM			= RAM()
+	game.expectedOut	= OUTPUT(game.input)
+	global description
+	global hint
+	description = DESCRIPTION()
+	hint = HINT()
+load(game,'levels/sandbox.cpu')
+
+def loadMenu():
+	global MODE
+	MODE = 'LEVEL LOAD'
+	global KEYS_BINDINGS
+	KEYS_BINDINGS = key_bindings_menu
+def unloadMenu():
+	global MODE
+	MODE = 'GAME'
+	global KEYS_BINDINGS
+	KEYS_BINDINGS = key_bindings_game
+#sys.exit()
+MODE ='GAME'
 
 @window.event
 def on_draw():
-	global screen_elements
-	global prev_elements
 	window.clear()
 	X=window.width//100
 	Y=window.height//100
 	font_size=window.width//115
-	# RAM
-	IAR = game.IAR
-	for y,col in enumerate(col_major(game.RAM,16)):
-		for x,bit in enumerate(col):
-			num	= y+x*16
-			NAME	= 'RAM'+str(y+x*16)
-			VAL	= bit
+	if MODE == 'GAME':
+		global screen_elements
+		global prev_elements
+		IAR = game.IAR
+		# RAM
+		for y,col in enumerate(col_major(game.RAM,16)):
+			for x,bit in enumerate(col):
+				num	= y+x*16
+				NAME	= 'RAM'+str(y+x*16)
+				VAL	= bit
+				if not  NAME in screen_elements:
+					X	= window.width//16*x
+					Y 	= window.height//50*(-y*2)+window.height//10*9
+					FS 	= font_size
+					LABEL	= pyglet.text.Label(
+							VAL,
+		        				x=X,
+							y=Y,
+							font_size=FS,
+							font_name=Font
+		        				)
+					screen_elements[NAME]=LABEL
+				elif screen_elements[NAME].text!=VAL:
+					screen_elements[NAME].text=VAL
+				screen_elements[NAME].draw()
+
+				num	= y+x*16
+				NAME	= 'nRAM'+str(y+x*16)
+				VAL	= str(num)
+				if not  NAME in screen_elements:
+					X	= window.width//16*x
+					Y 	= window.height//50*(-y*2+1)+window.height//10*9
+					FS 	= font_size
+					LABEL	= pyglet.text.Label(
+							VAL,
+		        				x=X,
+							y=Y,
+							font_size=FS,
+		        				)
+					screen_elements[NAME]=LABEL
+				elif screen_elements[NAME].text!=VAL:
+					screen_elements[NAME].text=VAL
+				screen_elements[NAME].draw()
+		#IAR+STEP
+		for n,thing in enumerate([	('IAR' ,game.IAR),
+						('STEP',game.STEP),
+						('speed',game.speed)]):
+			title,num=thing
+			NAME 	= title
+			VAL	= title+': '+str(num)
 			if not  NAME in screen_elements:
-				X	= window.width//16*x
-				Y 	= window.height//50*(-y*2)+window.height//10*9
-				FS 	= font_size
+				X	= window.width//8*n+window.width//100
+				Y	= window.height//20*19
+				FS	= font_size*2
 				LABEL	= pyglet.text.Label(
 						VAL,
-	        				x=X,
+						x=X,
 						y=Y,
 						font_size=FS,
-						font_name=Font
-	        				)
+						)
 				screen_elements[NAME]=LABEL
 			elif screen_elements[NAME].text!=VAL:
 				screen_elements[NAME].text=VAL
 			screen_elements[NAME].draw()
-
-			num	= y+x*16
-			NAME	= 'nRAM'+str(y+x*16)
-			VAL	= str(num)
-			if not  NAME in screen_elements:
-				X	= window.width//16*x
-				Y 	= window.height//50*(-y*2+1)+window.height//10*9
-				FS 	= font_size
-				LABEL	= pyglet.text.Label(
-						VAL,
-	        				x=X,
-						y=Y,
-						font_size=FS,
-	        				)
-				screen_elements[NAME]=LABEL
-			elif screen_elements[NAME].text!=VAL:
-				screen_elements[NAME].text=VAL
-			screen_elements[NAME].draw()
-
-
-	#IAR+STEP
-	for n,thing in enumerate([	('IAR' ,game.IAR),
-					('STEP',game.STEP),
-					('speed',game.speed)]):
-		title,num=thing
-		NAME 	= title
-		VAL	= title+': '+str(num)
-		if not  NAME in screen_elements:
-			X	= window.width//8*n+window.width//100
-			Y	= window.height//20*19
+		#REGISTERS
+		for n,register in enumerate(game.registers):
+			NAME	= 'REG'+str(n)
+			VAL	= register
+			X	= window.width//100
+			Y	= window.height//50*(-n*2)+window.height//10*2
 			FS	= font_size*2
 			LABEL	= pyglet.text.Label(
-					VAL,
-					x=X,
-					y=Y,
-					font_size=FS,
+					NAME+': '+VAL,
+					x=X,y=Y,
+					font_size=FS
 					)
-			screen_elements[NAME]=LABEL
-		elif screen_elements[NAME].text!=VAL:
-			screen_elements[NAME].text=VAL
-		screen_elements[NAME].draw()
-
-	#REGISTERS
-	for n,register in enumerate(game.registers):
-		NAME	= 'REG'+str(n)
-		VAL	= register
-		X	= window.width//100
-		Y	= window.height//50*(-n*2)+window.height//10*2
-		FS	= font_size*2
-		LABEL	= pyglet.text.Label(
-				NAME+': '+VAL,
-				x=X,y=Y,
-				font_size=FS
-				)
-		LABEL.draw()
-		screen_elements[NAME]=(VAL,X,Y,FS,LABEL)
-
-	#FLAGS
-	n=0
-	for flag,value in game.flags.items():
-		NAME	= flag+':\t'
-		VAL	= str(value)
-		X	= window.width//100*33
-		Y	= window.height//50*(-n*2)+window.height//10*2
-		FS	= font_size*2
-		LABEL	= pyglet.text.Label(
-				NAME+': '+VAL,
-				x=X,y=Y,
-				font_size=FS
-				)
-		LABEL.draw()
-		screen_elements[NAME]=(VAL,X,Y,FS,LABEL)
-		n+=1
-	#describe curr AIR
-	LABEL	= pyglet.text.Label(
-			describe(game,IAR),
-			x=window.width//100,
-			y=window.height//50*(1*2)+window.height//10*2,
-			font_size=font_size*2
-			)
-	LABEL.draw()
-	#describe curr selected
-	LABEL	= pyglet.text.Label(
-			str(int(game.RAM[game.highlighted],2))+'::'+describe(game,game.highlighted),
-			x=window.width//10*4,
-			y=window.height//20*19,
-			font_size=font_size*2
-			)
-	LABEL.draw()
-
-	#CURRENT IAR
-	IARx = screen_elements['RAM'+str(IAR)].x
-	IARy = screen_elements['RAM'+str(IAR)].y
-	a,b = IARx,IARy
-	c=IARx+ window.width//16
-	d=IARy+ window.height//50
-	pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	a,b,c,b)))
-	pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	a,b,a,d)))
-	pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	a,d,c,d)))
-	pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	c,b,c,d)))
-
-	#SELECTED
-	headLabel=screen_elements['RAM'+str(game.highlighted)]
-	cmd = list(game.RAM[game.highlighted])
-	cmd[game.cursorPos]='_'
-	cmd = ''.join(cmd)
-	LABEL	= pyglet.text.Label(
-			cmd,
-			x=headLabel.x,
-			y=headLabel.y,
-			font_size=headLabel.font_size,
-			font_name=Font,
-			color=(0,255,0,255)
-			)
-	LABEL.draw()
-
-
-
-	#help
-	if display[0]=='HELP':
-		lines = instructions.split('\n')
+			LABEL.draw()
+			screen_elements[NAME]=(VAL,X,Y,FS,LABEL)
+		#FLAGS
 		n=0
-		j=0
-		rows = 8
-		for line in lines:
-			pyglet.text.Label(
-                        	line,
-                        	x=window.width*.5+j*window.width//(4),
-                        	y=window.height//4-n*window.height//(4*(rows+1)),
-                        	font_size=font_size*1.5,
-                        	font_name=Font,
-                        	).draw()
+		for flag,value in game.flags.items():
+			NAME	= flag+':\t'
+			VAL	= str(value)
+			X	= window.width//100*33
+			Y	= window.height//50*(-n*2)+window.height//10*2
+			FS	= font_size*2
+			LABEL	= pyglet.text.Label(
+					NAME+': '+VAL,
+					x=X,y=Y,
+					font_size=FS
+					)
+			LABEL.draw()
+			screen_elements[NAME]=(VAL,X,Y,FS,LABEL)
+			n+=1
+		#describe curr AIR
+		LABEL	= pyglet.text.Label(
+				describe(game,IAR),
+				x=window.width//100,
+				y=window.height//50*(1*2)+window.height//10*2,
+				font_size=font_size*2
+				)
+		LABEL.draw()
+		#describe curr selected
+		LABEL	= pyglet.text.Label(
+				str(int(game.RAM[game.highlighted],2))+'::'+describe(game,game.highlighted),
+				x=window.width//10*4,
+				y=window.height//20*19,
+				font_size=font_size*2
+				)
+		LABEL.draw()
+		#CURRENT IAR
+		for _ in '_':
+			IARx = screen_elements['RAM'+str(IAR)].x
+			IARy = screen_elements['RAM'+str(IAR)].y
+			a,b = IARx,IARy
+			c=IARx+ window.width//16
+			d=IARy+ window.height//50
+			pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	a,b,c,b)))
+			pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	a,b,a,d)))
+			pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	a,d,c,d)))
+			pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	c,b,c,d)))
+		#SELECTED
+		for _ in '_':
+			headLabel=screen_elements['RAM'+str(game.highlighted)]
+			cmd = list(game.RAM[game.highlighted])
+			cmd[game.cursorPos]='_'
+			cmd = ''.join(cmd)
+			LABEL	= pyglet.text.Label(
+					cmd,
+					x=headLabel.x,
+					y=headLabel.y,
+					font_size=headLabel.font_size,
+					font_name=Font,
+					color=(0,255,0,255)
+					)
+			LABEL.draw()
+		#help
+		if display[0]=='HELP':
+			lines = instructions.split('\n')
+			n=0
+			j=0
+			rows = 8
+			for line in lines:
+				pyglet.text.Label(
+	                        	line,
+	                        	x=window.width*.5+j*window.width//(4),
+	                        	y=window.height//4-n*window.height//(4*(rows+1)),
+	                        	font_size=font_size*1.5,
+	                        	font_name=Font,
+	                        	).draw()
+				n+=1
+				if n>=rows:
+					n=0
+					j+=1
+		elif display[0]=='IO':
+			rows=8
+			input = (['INPUT:']+game.input)[:rows]
+			output= (game.output+['OUTPUT:'])[::-1][:rows]
+			for j,lines in enumerate([input,output]):
+				for n,line in enumerate(lines):
+					pyglet.text.Label(
+		                        	line,
+	        	                	x=window.width*.5+j*window.width//(4),
+	                	        	y=window.height//4-n*window.height//(4*(rows+1)),
+	                        		font_size=font_size*1.5,
+	                        		font_name=Font,
+	                        		).draw()
+		elif display[0]=='DESCRIPTION':
+			if SHIFT:
+				text = 'Hint: '+hint
+			else:
+				text = description
+			width = 50
+			TEXT =''
+			count = 0
+			for word in text.split():
+				if count + len(word)>width:
+					TEXT += '\n'+word
+					count = 0
+				else:
+					TEXT += ' '+word
+					count += len(word)
+			TEXT = TEXT[1:]
+
+			for n,line in enumerate(TEXT.split('\n')):
+				pyglet.text.Label(
+	                        	line,
+	    	                	x=window.width*.5,
+	            	        	y=window.height//4-n*window.height//(4*(8+1)),
+	                    		font_size=font_size*1.5,
+	                    		font_name=Font,
+	                    		).draw()
+		prev_elements=screen_elements.copy()
+
+	elif MODE == 'LEVEL LOAD':
+		levels = menu.files
+		selected = menu.selected
+		for n,level in enumerate(levels):
+			LABEL = pyglet.text.Label(
+				level.replace('levels/','').replace('.cpu',''),
+				x=window.width//4,
+				y=window.height//2+(n-selected)*window.height//40,
+				font_size=font_size*1.7,
+				color=(255,255,255,255) if selected==n else  (255,255,0,255) ,
+				#background_color=(255,255,255,0),
+					)
+			LABEL.draw()
+	#bottom
+	for _ in '_':
+		n,c=0,0
+		rows=2
+		if SHIFT: 	KEYS = filter(lambda x:x[1]==17 ,KEYS_BINDINGS)
+		else:		KEYS = filter(lambda x:x[1]==16 ,KEYS_BINDINGS)
+		KEYS = dict(zip(KEYS, [KEYS_BINDINGS[x] for x in KEYS]))
+		cols = (len(set([x[0] for x in KEYS.values()]))-1)/rows
+		cols = 4
+		for func in sorted(set(KEYS.values())):
+			if func[0]=='':continue
+			keys = filter(lambda x: KEYS[x]==func,KEYS)
+			func = func[0]
+			mods = [k[1] for k in keys]
+			keys = [key._key_names[k[0]] for k in keys]
+			keys = [k.upper() if m ==17 else k.lower() for k,m in zip(keys,mods)]
+			keys = ' '+' '.join(filter(lambda x: 'NUM' not in x, keys)+filter(lambda x: 'NUM_' in x,keys))
+			keys = keys.replace('NUM_','').replace('num_','').replace('_','')
+			keys = ' '.join(set(keys.split()))
+			LABEL = pyglet.text.Label(	func,
+										x=c*window.width//(cols+1),
+										y=0*window.height//40+(n+0.2)*window.height//40,
+										font_size=font_size*1.5,
+										color=(0,255,255,255),
+										#background_color=(255,255,255,0),
+										)
+			LABEL.draw()
+			LABEL = pyglet.text.Label(	keys,
+										x=(.9+2*c)*window.width//(2*(cols+1)),
+										y=0*window.height//40+(n+0.2)*window.height//40,
+										font_size=font_size*1.5,
+										color=(255,0,0,255),
+										#background_color=(255,255,255,0),
+										)
+			LABEL.draw()
 			n+=1
 			if n>=rows:
 				n=0
-				j+=1
-	if display[0]=='IO':
-		rows=8
-		input = (['INPUT:']+game.input+['00000000']*rows)[:rows]
-		output= (game.output+['OUTPUT:'])[::-1][:rows]
-		for j,lines in enumerate([input,output]):
-			for n,line in enumerate(lines):
-				pyglet.text.Label(
-	                        	line,
-        	                	x=window.width*.5+j*window.width//(4),
-                	        	y=window.height//4-n*window.height//(4*(rows+1)),
-                        		font_size=font_size*1.5,
-                        		font_name=Font,
-                        		).draw()
-
-	prev_elements=screen_elements.copy()
-
-
+				c+=1
 @window.event
 def on_key_press(symbol, modifiers):
-	global display
-	if symbol == key.H:
-		display.append(display.pop(0))
+	#if symbol == key.H:
+	#	display.append(display.pop(0))
+	if (symbol,modifiers) in KEYS_BINDINGS:
+		KEYS_BINDINGS[(symbol,modifiers)][1]()
+
 	else:
-		game.play(symbol)
+		print key._key_names[symbol],modifiers
+	if symbol in [key.LSHIFT,key.RSHIFT]:
+		global SHIFT
+		SHIFT = True
+@window.event
+def on_key_release(symbol, modifiers):
+	if symbol in [key.LSHIFT,key.RSHIFT]:
+		global SHIFT
+		SHIFT = False
+
 @window.event
 def on_resize(width, height):
 	global screen_elements
@@ -547,5 +694,5 @@ def on_resize(width, height):
 #def on_mouse_press(x, y, button, modifiers):
 #    	#print x,y,button,modifiers
 #	pass
-pyglet.app.run()
 
+pyglet.app.run()

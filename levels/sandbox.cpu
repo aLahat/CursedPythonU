@@ -1,0 +1,14 @@
+def DESCRIPTION():
+	return 'No rules, just have fun and be creative'
+
+def HINT():
+	return 'Do you really need a hint in order to be creative?'
+
+def INPUT():
+	import random
+	return [''.join([random.choice(['0','1']) for _ in range(8)]) for _ in range(1000)]
+def OUTPUT(input=None):
+	return None
+
+def RAM():
+	return ['0'*8]*2**8

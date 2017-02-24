@@ -1,0 +1,15 @@
+def DESCRIPTION():
+	return 'For each input item just output said item'
+
+def HINT():
+	return 'There are only a few inputs, why bother with loops'
+
+def INPUT():
+	return ['00000000',
+			'11111111',
+			'10011011']
+def OUTPUT(input=None):
+	return input
+
+def RAM():
+	return ['0'*8]*2**8
