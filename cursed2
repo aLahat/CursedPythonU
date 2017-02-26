@@ -290,11 +290,11 @@ class CPU:
 		'''
 	def inputLoad(self,input):
 		self.input,self.inputBak = input, input
-	def action_upHighlighted(self):
-		self.highlighted=(self.highlighted-1)%2**8
+	def action_upHighlighted(self,n=1):
+		self.highlighted=(self.highlighted-n)%2**8
 		self.cursorPos = 0
-	def action_downHighlighted(self):
-		self.highlighted=(self.highlighted+1)%2**8
+	def action_downHighlighted(self,n=1):
+		self.highlighted=(self.highlighted+n)%2**8
 		self.cursorPos = 0
 	def action_leftCursor(self):
 		self.cursorPos = (self.cursorPos-1)%8
@@ -329,7 +329,7 @@ class CPU:
 		self.IR  = '0'*8
 		self.STEP = 0
 		#RAM = ['0'*8]*2**8
-		self.registers = ['00000000',
+		self.registers = [		'00000000',
 						'00000000',
 						'00000000',
 						'00000000']
@@ -372,11 +372,13 @@ menu = LEVELMENU(game)
 SHIFTKEY,NOSHIFTKEY=17,16
 
 key_bindings_game={
-	(key.H,NOSHIFTKEY)		:('Help',		lambda :display.append(display.pop(0))),
-	(key.H,SHIFTKEY)		:('Help',		lambda :display.insert(0,display.pop())),
-	(key.UP,NOSHIFTKEY)		:('',			game.action_upHighlighted),
+	(key.H,NOSHIFTKEY)	:('Help',		lambda :display.append(display.pop(0))),
+	(key.H,SHIFTKEY)	:('Help',		lambda :display.insert(0,display.pop())),
+	(key.UP,NOSHIFTKEY)	:('',			game.action_upHighlighted),
 	(key.DOWN,NOSHIFTKEY)	:('',			game.action_downHighlighted),
 	(key.LEFT,NOSHIFTKEY)	:('',			game.action_leftCursor),
+	(key.RIGHT,SHIFTKEY)	:('',			lambda :game.action_downHighlighted(16)),
+	(key.LEFT,SHIFTKEY)	:('',			lambda :game.action_upHighlighted(16)),
 	(key.RIGHT,NOSHIFTKEY)	:('',			game.action_rightCursor),
 	(key.NUM_0,NOSHIFTKEY)	:('0',			game.action_0),
 	(key.NUM_1,NOSHIFTKEY)	:('1',			game.action_1),
