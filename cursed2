@@ -43,6 +43,19 @@ cmdD={	'1000':'ADD',
 		'0110':'CLF',
 		'0111':'IO',
 		}
+class SOUND:
+	def __init__(self,tune = 0):
+		self.notes = [pyglet.media.load(x,streaming=False) for x in  sorted((glob('assets/beeps/*.wav')))]
+		player = pyglet.media.Player()
+		for i in range(tune):
+			player.queue(random.choice(self.notes))
+		player.play()
+	def __call__(self,n):
+		if type(n)==str:
+			self.notes[int(n,2)%len(self.notes)].play()
+		else:
+			self.notes[n%len(self.notes)].play()
+
 BIN = {'00':0,'01':1,'10':2,'11':3}
 
 def translate(cmd):
@@ -103,12 +116,12 @@ def describe(game,IAR):
 
 
 class CPU:
-	def __init__(self,file=None):
+	def __init__(self,file=None,sound=None):
 		if file == None: self.RAM = ['0'*8]*(2**8)
 		else: 		 self.RAM = self.load(file)
 
 		self.expectedOut = None
-
+		self.sound	= sound
 		self.origRAM = self.RAM[:]
 		self.fontSize	= 14
 		self.run	= False
@@ -147,7 +160,10 @@ class CPU:
 	def step(self,dt=0):
 		if self.output == self.expectedOut: self.success=True
 		self.STEP += 1
+		cmd = self.RAM[self.IAR]
 		self.CMD = translate(self.RAM[self.IAR])
+		if self.sound != None:
+			self.sound(cmd[:4])
 		if self.CMD[0]=='ADD':
 			a = int(self.registers[self.CMD[1]],2)
 			b = int(self.registers[self.CMD[2]],2)
@@ -203,10 +219,16 @@ class CPU:
 			self.registers[self.CMD[1]]=self.RAM[(self.IAR+1)%2**8]
                 	self.IAR += 2
                 	self.IAR  = self.IAR%2**8
+			if self.sound != None:
+				self.sound(cmd[-4:])
+
 		if self.CMD[0]=='JMPR':
 			self.IAR = int(self.registers[self.CMD[2]],2)
 		if self.CMD[0]=='JMP':
 			self.IAR = int(self.RAM[(self.IAR+1)%2**8],2)
+			if self.sound != None:
+				self.sound(cmd[-4:])
+
 		if self.CMD[0]=='JMPIF':
 			for flag in self.CMD[1:]:
 				if self.flags[flag]=='1':
@@ -215,7 +237,7 @@ class CPU:
 			self.IAR += 1
 			self.IAR  = self.IAR%2**8
 		if self.CMD[0]=='CLF':
-			self.flags = {'C':0,'A':0,'E':0,'Z':0}
+			self.flags = {'carry':0,'larger':0,'equal':0,'zero':0}
 			self.IAR += 1
 			self.IAR  = self.IAR%2**8
 		if self.CMD[0]=='IO':
@@ -342,37 +364,40 @@ class LEVELMENU:
 		self.files = sorted(glob('levels/*.cpu'))
 
 SHIFT=False
-game = CPU()
+beep = SOUND(tune=8)
+game = CPU(sound=beep)
 menu = LEVELMENU(game)
+SHIFTKEY,NOSHIFTKEY=17,16
+
 key_bindings_game={
-	(key.H,0)		:('Help',		lambda :display.append(display.pop(0))),
-	(key.H,1)		:('Help',		lambda :display.insert(0,display.pop())),
-	(key.UP,0)		:('',			game.action_upHighlighted),
-	(key.DOWN,0)	:('',			game.action_downHighlighted),
-	(key.LEFT,0)	:('',			game.action_leftCursor),
-	(key.RIGHT,0)	:('',			game.action_rightCursor),
-	(key.NUM_0,0)	:('0',			game.action_0),
-	(key.NUM_1,0)	:('1',			game.action_1),
-	(key._0,0)		:('0',			game.action_0),
-	(key._1,0)		:('1',			game.action_1),
-	(key.ENTER,0)	:('Step',		game.step),
-	(key.R,0)		:('Reset',		game.reset),
-	(key.R,1)		:('ResetRAM',	game.resetRAM),
-	(65451,0)		:('Speed+',		game.action_speedUp),
-	(43,0)			:('Speed+',		game.action_speedUp),
-	(65453,0)		:('Speed-',		game.action_speedDown),
-	(45,0)			:('Speed-',		game.action_speedDown),
-	(key.SPACE,0)	:('Play/Pause',	game.play),
-	(key.L,0)		:('Load',		lambda : loadMenu()),
+	(key.H,NOSHIFTKEY)		:('Help',		lambda :display.append(display.pop(0))),
+	(key.H,SHIFTKEY)		:('Help',		lambda :display.insert(0,display.pop())),
+	(key.UP,NOSHIFTKEY)		:('',			game.action_upHighlighted),
+	(key.DOWN,NOSHIFTKEY)	:('',			game.action_downHighlighted),
+	(key.LEFT,NOSHIFTKEY)	:('',			game.action_leftCursor),
+	(key.RIGHT,NOSHIFTKEY)	:('',			game.action_rightCursor),
+	(key.NUM_0,NOSHIFTKEY)	:('0',			game.action_0),
+	(key.NUM_1,NOSHIFTKEY)	:('1',			game.action_1),
+	(key._0,NOSHIFTKEY)		:('0',			game.action_0),
+	(key._1,NOSHIFTKEY)		:('1',			game.action_1),
+	(key.ENTER,NOSHIFTKEY)	:('Step',		game.step),
+	(key.R,NOSHIFTKEY)		:('Reset',		game.reset),
+	(key.R,SHIFTKEY)		:('ResetRAM',	game.resetRAM),
+	(65451,NOSHIFTKEY)		:('Speed+',		game.action_speedUp),
+	(43,NOSHIFTKEY)			:('Speed+',		game.action_speedUp),
+	(65453,NOSHIFTKEY)		:('Speed-',		game.action_speedDown),
+	(45,NOSHIFTKEY)			:('Speed-',		game.action_speedDown),
+	(key.SPACE,NOSHIFTKEY)	:('Play/Pause',	game.play),
+	(key.L,NOSHIFTKEY)		:('Load',		lambda : loadMenu()),
 }
 key_bindings_menu={
-	(key.H,0)		:('Help',		lambda :display.append(display.pop(0))),
-	(key.H,1)		:('Help',		lambda :display.insert(0,display.pop())),
-	(key.UP,0)		:('',			menu.up),
-	(key.DOWN,0)	:('',			menu.down),
-	(key.ENTER,0)	:('select',		menu.select),
-	(key.L,0)		:('back',		lambda : unloadMenu()),
-	(key.BACKSPACE,0):('back',		lambda : unloadMenu()),
+	(key.H,NOSHIFTKEY)		:('Help',		lambda :display.append(display.pop(0))),
+	(key.H,SHIFTKEY)		:('Help',		lambda :display.insert(0,display.pop())),
+	(key.UP,NOSHIFTKEY)		:('',			menu.up),
+	(key.DOWN,NOSHIFTKEY)	:('',			menu.down),
+	(key.ENTER,NOSHIFTKEY)	:('select',		menu.select),
+	(key.L,NOSHIFTKEY)		:('back',		lambda : unloadMenu()),
+	(key.BACKSPACE,NOSHIFTKEY):('back',		lambda : unloadMenu()),
 
 }
 
@@ -630,8 +655,8 @@ def on_draw():
 	for _ in '_':
 		n,c=0,0
 		rows=2
-		if SHIFT: 	KEYS = filter(lambda x:x[1]==1 ,KEYS_BINDINGS)
-		else:		KEYS = filter(lambda x:x[1]==0 ,KEYS_BINDINGS)
+		if SHIFT: 	KEYS = filter(lambda x:x[1]==SHIFTKEY ,KEYS_BINDINGS)
+		else:		KEYS = filter(lambda x:x[1]==NOSHIFTKEY ,KEYS_BINDINGS)
 		KEYS = dict(zip(KEYS, [KEYS_BINDINGS[x] for x in KEYS]))
 		cols = (len(set([x[0] for x in KEYS.values()]))-1)/rows
 		cols = 4
