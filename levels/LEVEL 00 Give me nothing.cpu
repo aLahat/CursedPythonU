@@ -1,0 +1,13 @@
+def DESCRIPTION():
+	return 'Hi, lets test if nothing works, could you just output nothing("00000000")'
+
+def HINT():
+	return 'you can press "h" in order to circle trhough the commands, input/output, and instructions'
+
+def INPUT():
+	return []
+def OUTPUT(input=None):
+	return ['00000000']
+
+def RAM():
+	return ['0'*8]*2**8
