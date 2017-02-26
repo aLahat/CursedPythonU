@@ -57,7 +57,7 @@ class SOUND:
 			self.notes[n%len(self.notes)].play()
 	def victory(self):
 		for i in [0,7,2,9,9]:
-			self.plyer.queue(self.notes[i])
+			self.player.queue(self.notes[i])
 		self.player.play()
 BIN = {'00':0,'01':1,'10':2,'11':3}
 
