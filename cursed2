@@ -46,16 +46,19 @@ cmdD={	'1000':'ADD',
 class SOUND:
 	def __init__(self,tune = 0):
 		self.notes = [pyglet.media.load(x,streaming=False) for x in  sorted((glob('assets/beeps/*.wav')))]
-		player = pyglet.media.Player()
+		self.player = pyglet.media.Player()
 		for i in range(tune):
-			player.queue(random.choice(self.notes))
-		player.play()
+			self.player.queue(random.choice(self.notes))
+		self.player.play()
 	def __call__(self,n):
 		if type(n)==str:
 			self.notes[int(n,2)%len(self.notes)].play()
 		else:
 			self.notes[n%len(self.notes)].play()
-
+	def victory(self):
+		for i in [0,7,2,9,9]:
+			self.plyer.queue(self.notes[i])
+		self.player.play()
 BIN = {'00':0,'01':1,'10':2,'11':3}
 
 def translate(cmd):
@@ -158,7 +161,7 @@ class CPU:
 			sys.exit()
 		return ram
 	def step(self,dt=0):
-		if self.output == self.expectedOut: self.success=True
+
 		self.STEP += 1
 		cmd = self.RAM[self.IAR]
 		self.CMD = translate(self.RAM[self.IAR])
@@ -251,6 +254,12 @@ class CPU:
 				self.output.append(self.registers[b])
 			self.IAR += 1
 			self.IAR  = self.IAR%2**8
+
+		if self.output == self.expectedOut:
+			self.success=True
+			if self.run: self.play()
+			self.sound.victory()
+
 	def refreshScreen(self,text =''):
 		'''
 		myscreen.keypad(1)
