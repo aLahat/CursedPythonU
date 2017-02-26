@@ -6,7 +6,7 @@ from pyglet import font
 import pyglet
 import time
 import sys
-import curses
+#import curses
 import re
 import random
 from glob import glob
@@ -26,7 +26,7 @@ def html_table(nested):
 	html += '</table>'
 	return html
 
-cmdD={		'1000':'ADD',
+cmdD={	'1000':'ADD',
 		'1001':'SHR',
 		'1010':'SHL',
 		'1011':'NOT',
@@ -118,6 +118,7 @@ class CPU:
 		self.STEP	= 0
 		self.output	= []
 		self.input	= []
+		self.inputBak 	= []
 		self.cursorPos	= 0
 		self.IAR 	= 0
 		self.IR 	= '0'*8
@@ -265,9 +266,8 @@ class CPU:
 			myscreen.addstr(2+n,147,out)
 		myscreen.refresh()
 		'''
-	def input(self,input):
-		if   type(input)==str: self.input.append(input)
-		elif type(input)==list:self.input=self.input+input
+	def inputLoad(self,input):
+		self.input,self.inputBak = input, input
 	def action_upHighlighted(self):
 		self.highlighted=(self.highlighted-1)%2**8
 	def action_downHighlighted(self):
@@ -311,6 +311,9 @@ class CPU:
 						'00000000']
 		self.ACC = '0'*8
 		self.flags = {'carry':0,'larger':0,'equal':0,'zero':0}
+		self.output=[]
+		if self.run: self.play()
+
 	def resetRAM(self):
 		self.reset()
 		self.RAM = self.origRAM
@@ -342,34 +345,34 @@ SHIFT=False
 game = CPU()
 menu = LEVELMENU(game)
 key_bindings_game={
-	(key.H,16)		:('Help',		lambda :display.append(display.pop(0))),
-	(key.H,17)		:('Help',		lambda :display.insert(0,display.pop())),
-	(key.UP,16)		:('',			game.action_upHighlighted),
-	(key.DOWN,16)	:('',			game.action_downHighlighted),
-	(key.LEFT,16)	:('',			game.action_leftCursor),
-	(key.RIGHT,16)	:('',			game.action_rightCursor),
-	(key.NUM_0,16)	:('0',			game.action_0),
-	(key.NUM_1,16)	:('1',			game.action_1),
-	(key._0,16)		:('0',			game.action_0),
-	(key._1,16)		:('1',			game.action_1),
-	(key.ENTER,16)	:('Step',		game.step),
-	(key.R,16)		:('Reset',		game.reset),
-	(key.R,17)		:('ResetRAM',	game.resetRAM),
-	(65451,16)		:('Speed+',		game.action_speedUp),
-	(43,16)			:('Speed+',		game.action_speedUp),
-	(65453,16)		:('Speed-',		game.action_speedDown),
-	(45,16)			:('Speed-',		game.action_speedDown),
-	(key.SPACE,16)	:('Play/Pause',	game.play),
-	(key.L,16)		:('Load',		lambda : loadMenu()),
+	(key.H,0)		:('Help',		lambda :display.append(display.pop(0))),
+	(key.H,1)		:('Help',		lambda :display.insert(0,display.pop())),
+	(key.UP,0)		:('',			game.action_upHighlighted),
+	(key.DOWN,0)	:('',			game.action_downHighlighted),
+	(key.LEFT,0)	:('',			game.action_leftCursor),
+	(key.RIGHT,0)	:('',			game.action_rightCursor),
+	(key.NUM_0,0)	:('0',			game.action_0),
+	(key.NUM_1,0)	:('1',			game.action_1),
+	(key._0,0)		:('0',			game.action_0),
+	(key._1,0)		:('1',			game.action_1),
+	(key.ENTER,0)	:('Step',		game.step),
+	(key.R,0)		:('Reset',		game.reset),
+	(key.R,1)		:('ResetRAM',	game.resetRAM),
+	(65451,0)		:('Speed+',		game.action_speedUp),
+	(43,0)			:('Speed+',		game.action_speedUp),
+	(65453,0)		:('Speed-',		game.action_speedDown),
+	(45,0)			:('Speed-',		game.action_speedDown),
+	(key.SPACE,0)	:('Play/Pause',	game.play),
+	(key.L,0)		:('Load',		lambda : loadMenu()),
 }
 key_bindings_menu={
-	(key.H,16)		:('Help',		lambda :display.append(display.pop(0))),
-	(key.H,17)		:('Help',		lambda :display.insert(0,display.pop())),
-	(key.UP,16)		:('',			menu.up),
-	(key.DOWN,16)	:('',			menu.down),
-	(key.ENTER,16)	:('select',		menu.select),
-	(key.L,16)		:('back',		lambda : unloadMenu()),
-	(key.BACKSPACE,16):('back',		lambda : unloadMenu()),
+	(key.H,0)		:('Help',		lambda :display.append(display.pop(0))),
+	(key.H,1)		:('Help',		lambda :display.insert(0,display.pop())),
+	(key.UP,0)		:('',			menu.up),
+	(key.DOWN,0)	:('',			menu.down),
+	(key.ENTER,0)	:('select',		menu.select),
+	(key.L,0)		:('back',		lambda : unloadMenu()),
+	(key.BACKSPACE,0):('back',		lambda : unloadMenu()),
 
 }
 
@@ -388,7 +391,7 @@ description=		  ''
 HINT	=			  ''
 def load(game, f):
 	exec(open(f).read())
-	game.input 			= INPUT()
+	game.inputLoad(INPUT())
 	game.RAM			= RAM()
 	game.expectedOut	= OUTPUT(game.input)
 	global description
@@ -627,8 +630,8 @@ def on_draw():
 	for _ in '_':
 		n,c=0,0
 		rows=2
-		if SHIFT: 	KEYS = filter(lambda x:x[1]==17 ,KEYS_BINDINGS)
-		else:		KEYS = filter(lambda x:x[1]==16 ,KEYS_BINDINGS)
+		if SHIFT: 	KEYS = filter(lambda x:x[1]==1 ,KEYS_BINDINGS)
+		else:		KEYS = filter(lambda x:x[1]==0 ,KEYS_BINDINGS)
 		KEYS = dict(zip(KEYS, [KEYS_BINDINGS[x] for x in KEYS]))
 		cols = (len(set([x[0] for x in KEYS.values()]))-1)/rows
 		cols = 4
@@ -638,7 +641,7 @@ def on_draw():
 			func = func[0]
 			mods = [k[1] for k in keys]
 			keys = [key._key_names[k[0]] for k in keys]
-			keys = [k.upper() if m ==17 else k.lower() for k,m in zip(keys,mods)]
+			keys = [k.upper() if m ==1 else k.lower() for k,m in zip(keys,mods)]
 			keys = ' '+' '.join(filter(lambda x: 'NUM' not in x, keys)+filter(lambda x: 'NUM_' in x,keys))
 			keys = keys.replace('NUM_','').replace('num_','').replace('_','')
 			keys = ' '.join(set(keys.split()))
