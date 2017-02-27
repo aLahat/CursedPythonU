@@ -1,0 +1,13 @@
+def DESCRIPTION():
+	return 'For each input item just output said item. But this time on steroids'
+
+def HINT():
+	return 'Maybe jump for a loop (say apple)'
+
+def RAM():
+	return [	'00100000',
+						'00000001',
+						'01111101',
+						'10000001',
+						'01000000',
+						'00000010']

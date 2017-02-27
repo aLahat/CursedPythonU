@@ -10,6 +10,10 @@ import sys
 import re
 import random
 from glob import glob
+import imp
+from tkinter import *
+from tkinter import ttk
+
 
 instructions='''1000 ADD   RA,RB
 1001 SHR   RA,RB
@@ -111,14 +115,23 @@ def load(f=None):
 	game -- CPU object
 	f -- saved file that shoug
 	'''
+	DESCRIPTION = lambda: ''
+	HINT		= lambda: ''
+	INPUT		= lambda: []
+	OUTPUT		= lambda: None
+	RAM			= lambda: ['00000000']*2**8
 	if f!=None:
-		exec(open(f).read())
-	else:
-		DESCRIPTION = lambda: ''
-		HINT		= lambda: ''
-		INPUT		= lambda: []
-		OUTPUT		= lambda: ['2']
-		RAM			= lambda: ['00000000']*2**8
+		level = imp.load_source('level', f)
+		if "DESCRIPTION" in dir(level):
+			DESCRIPTION = level.DESCRIPTION
+		if 'HINT' in dir(level):
+			HINT =  level.HINT
+		if 'INPUT' in dir(level):
+			INPUT = level.INPUT
+		if 'OUTPUT' in dir(level):
+			OUTPUT = level.OUTPUT
+		if 'RAM' in dir(level):
+			RAM = level.RAM
 	game = CPU(	description=DESCRIPTION(),
 				hint=HINT(),
 				inputlist=INPUT(),
@@ -140,18 +153,23 @@ def unloadMenu():
 	MODE,KEYS_BINDINGS = 'GAME',key_bindings_game
 
 
+
 class SOUND:
-	def __init__(self,tune = 0):
+	def __init__(self,tune = 0,vol=0.5):
 		self.notes = [pyglet.media.load(x,streaming=False) for x in  sorted((glob('assets/beeps/*.wav')))]
 		self.player = pyglet.media.Player()
+		self.player.volume=vol
+
 		for i in range(tune):
 			self.player.queue(random.choice(self.notes))
 			self.player.play()
 	def __call__(self,n):
 		if type(n)==str:
-			self.notes[int(n,2)%len(self.notes)].play()
+			self.player.queue(self.notes[int(n,2)%len(self.notes)])
 		else:
-			self.notes[n%len(self.notes)].play()
+			self.player.queue(self.notes[n%len(self.notes)])
+		self.player.play()
+
 	def victory(self):
 		for i in [0,7,2,9,9]:
 			self.player.queue(self.notes[i])
@@ -165,7 +183,7 @@ class CPU:
 					ram = None,
 					sound=None):
 		if ram == None: self.RAM = ['0'*8]*(2**8)
-		else: 		 self.RAM = ram
+		else: 		 self.RAM = (ram + ['0'*8]*(2**8))[:2**8]
 		self.hint=hint
 		self.description=description
 		self.expectedOut = output
@@ -366,11 +384,13 @@ class CPU:
 class LEVELMENU:
 	def __init__(self,game):
 		self.game=game
-		self.selected = 0
 		self.modes = ['LEVEL','EXAMPLE']
+		self.sel = [0]*len(self.modes)
 		self.modeSelected = 0
+		self.selected = self.sel[self.modeSelected]
 		self.refresh()
 	def refresh(self):
+		self.selected = self.sel[self.modeSelected]
 		self.mode = self.modes[self.modeSelected]
 		self.files = sorted(glob('levels/'+self.mode+'*.cpu'))
 		self.names = [x.split(self.mode)[-1].replace('.cpu','') for x in self.files]
@@ -380,12 +400,11 @@ class LEVELMENU:
 		newGame = load(selected)
 		for att,value in newGame.__dict__.items():
 			self.game.__dict__[att]=value
-		print newGame.description
 	def up(self):
-		self.selected =(self.selected+1)%len(self.files)
-		self.files = self.refresh()
+		self.sel[self.modeSelected] =(self.sel[self.modeSelected]+1)%len(self.files)
+		self.refresh()
 	def down(self):
-		self.selected =(self.selected-1)%len(self.files)
+		self.sel[self.modeSelected] =(self.sel[self.modeSelected]-1)%len(self.files)
 		self.refresh()
 	def left(self):
 		self.modeSelected=(self.modeSelected-1)%len(self.modes)
@@ -394,10 +413,19 @@ class LEVELMENU:
 		self.modeSelected=(self.modeSelected+1)%len(self.modes)
 		self.refresh()
 
+class GAMEMENU:
+	def __init__(self,game,sound):
+		pass
+	def __call__(self):
+		pass
+
+
 SHIFT=False
 beep = SOUND(tune=8)
 game = CPU(sound=beep)
 menu = LEVELMENU(game)
+gameMenu = GAMEMENU(game,beep)
+
 SHIFTKEY,NOSHIFTKEY=17,16
 
 key_bindings_game={
