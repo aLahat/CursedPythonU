@@ -108,11 +108,17 @@ class SOUND:
 			self.player.play()
 
 class CPU:
-	def __init__(self,file=None,sound=None):
-		if file == None: self.RAM = ['0'*8]*(2**8)
-		else: 		 self.RAM = self.load(file)
-
-		self.expectedOut = None
+	def __init__(self,description='',
+					hint='',
+					inputlist=[],
+					output = None,
+					ram = None,
+					sound=None):
+		if ram == None: self.RAM = ['0'*8]*(2**8)
+		else: 		 self.RAM = ram
+		self.hint=hint
+		self.description=description
+		self.expectedOut = output
 		self.sound	= sound
 		self.origRAM = self.RAM[:]
 		self.fontSize	= 14
@@ -122,8 +128,8 @@ class CPU:
 		self.speed	= self.speeds [self.speedi]
 		self.STEP	= 0
 		self.output	= []
-		self.input	= []
-		self.inputBak 	= []
+		self.input	= inputlist
+		self.inputBak 	= inputlist[:]
 		self.cursorPos	= 0
 		self.IAR 	= 0
 		self.IR 	= '0'*8
@@ -248,7 +254,6 @@ class CPU:
 			self.success=True
 			if self.run: self.play()
 			self.sound.victory()
-
 	def inputLoad(self,input):
 		self.input,self.inputBak = input, input
 	def action_upHighlighted(self,n=1):
@@ -298,7 +303,6 @@ class CPU:
 		self.flags = {'carry':0,'larger':0,'equal':0,'zero':0}
 		self.output=[]
 		if self.run: self.play()
-
 	def resetRAM(self):
 		self.reset()
 		self.RAM = self.origRAM
@@ -322,8 +326,11 @@ class LEVELMENU:
 		self.names = [x.split(self.mode)[-1].replace('.cpu','') for x in self.files]
 	def select(self):
 		selected = self.files[self.selected]
-		load(self.game,selected)
 		unloadMenu()
+		newGame = load(selected)
+		for att,value in newGame.__dict__.items():
+			self.game.__dict__[att]=value
+		print newGame.description
 	def up(self):
 		self.selected =(self.selected+1)%len(self.files)
 		self.files = self.refresh()
@@ -365,6 +372,7 @@ key_bindings_game={
 	(45,NOSHIFTKEY)			:('Speed-',		game.action_speedDown),
 	(key.SPACE,NOSHIFTKEY)	:('Play/Pause',	game.play),
 	(key.L,NOSHIFTKEY)		:('Load',		lambda : loadMenu()),
+	(key.S,NOSHIFTKEY)		:('save',		lambda : saveMenu()),
 	}
 key_bindings_menu={
 	(key.UP,NOSHIFTKEY)		:('',			menu.up),
@@ -375,6 +383,16 @@ key_bindings_menu={
 	(key.L,NOSHIFTKEY)		:('back',		lambda : unloadMenu()),
 	(key.BACKSPACE,NOSHIFTKEY):('back',		lambda : unloadMenu()),
 	}
+key_bindings_saveMenu={
+	(key.UP,NOSHIFTKEY)		:('',			menu.up),
+	(key.DOWN,NOSHIFTKEY)	:('',			menu.down),
+	(key.RIGHT,NOSHIFTKEY)	:('',			menu.right),
+	(key.LEFT,NOSHIFTKEY)	:('',			menu.left),
+	(key.ENTER,NOSHIFTKEY)	:('select',		menu.select),
+	(key.L,NOSHIFTKEY)		:('back',		lambda : unloadMenu()),
+	(key.BACKSPACE,NOSHIFTKEY):('back',		lambda : unloadMenu()),
+	}
+
 
 KEYS_BINDINGS = key_bindings_game
 display=['IO','HELP','DESCRIPTION']
@@ -384,35 +402,49 @@ window = pyglet.window.Window()
 screen_elements={}
 prev_elements=screen_elements.copy()
 
-INPUT 	= lambda	: []
-OUTPUT	= lambda x	: [None]
-RAM 	= lambda 	: ['00000000']*2**8
-description=		  ''
-HINT	=			  ''
-def load(game, f):
-	exec(open(f).read())
-	game.inputLoad(INPUT())
-	game.RAM			= RAM()
-	game.expectedOut	= OUTPUT(game.input)
-	global description
-	global hint
-	description = DESCRIPTION()
-	hint = HINT()
-load(game,'levels/sandbox.cpu')
+
+def load(f=None):
+	'''
+	loads a save file unto the game.
+
+	Keyword arguments:
+	game -- CPU object
+	f -- saved file that shoug
+	'''
+	if f!=None:
+		exec(open(f).read())
+	else:
+		DESCRIPTION = lambda: ''
+		HINT		= lambda: ''
+		INPUT		= lambda: []
+		OUTPUT		= lambda: ['2']
+		RAM			= lambda: ['00000000']*2**8
+	game = CPU(	description=DESCRIPTION(),
+				hint=HINT(),
+				inputlist=INPUT(),
+				output=OUTPUT(),
+				ram=RAM(),
+				sound=beep)
+	return game
+
+#load('levels/sandbox.cpu')
 
 def loadMenu():
-	global MODE
-	MODE = 'LEVEL LOAD'
-	global KEYS_BINDINGS
-	KEYS_BINDINGS = key_bindings_menu
-def unloadMenu():
-	global MODE
-	MODE = 'GAME'
-	global KEYS_BINDINGS
-	KEYS_BINDINGS = key_bindings_game
-#sys.exit()
-MODE ='GAME'
+	'''changes mode to load menu'''
+	global MODE, KEYS_BINDINGS
+	MODE,KEYS_BINDINGS = 'LEVEL LOAD',key_bindings_menu
 
+def saveMenu():
+	'''goes to the save mode menu'''
+	global MODE, KEYS_BINDINGS
+	MODE,KEYS_BINDINGS = 'SAVE',key_bindings_saveMenu
+
+def unloadMenu():
+	'''returns to the game mode'''
+	global MODE, KEYS_BINDINGS
+	MODE,KEYS_BINDINGS = 'GAME',key_bindings_game
+
+loadMenu()
 @window.event
 def on_draw():
 	window.clear()
@@ -588,9 +620,9 @@ def on_draw():
 	                        		).draw()
 		elif display[0]=='DESCRIPTION':
 			if SHIFT:
-				text = 'Hint: '+hint
+				text = 'Hint: '+game.hint
 			else:
-				text = description
+				text = game.description
 			width = 50
 			TEXT =''
 			count = 0
