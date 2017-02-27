@@ -29,11 +29,21 @@ instructions='''1000 ADD   RA,RB
 0111 IO	From,RB
 '''
 def col_major(alist, sublen):
-	#turns list to nested list (matrix)
+	"""
+	Turns list to nested list (matrix)
+	Keyword arguments:
+	alist -- list to convert
+	sublen -- length
+	"""
 	numrows = (len(alist)+sublen-1) // sublen
 	return [alist[i::sublen] for i in range(numrows)]
-
 def translate(cmd):
+	"""
+	Interprets a 8 bit binary number into a list with commands
+	Keyword arguments:
+	cmd -- 8 bit binary number string
+	"""
+
 	cmdD={	'1000':'ADD',
 	'1001':'SHR',
 	'1010':'SHL',
@@ -63,9 +73,13 @@ def translate(cmd):
 		try:	out.append(BIN[cmd[6:8]])
 		except: out.append('')
 	return out
-
 def describe(game,IAR):
-	#print current command
+	"""
+	get command in a human readible format
+	Keyword arguments:
+	game -- CPU game object
+	IAR -- RAM adress
+	"""
 	CMD = map(str,translate(game.RAM[IAR]))
 	if	CMD[0]=='ADD':	command = 'Add   REG'+str(CMD[1])+' to REG'+str(CMD[2])
 	elif	CMD[0]=='SHL':	command = 'Shift REG'+str(CMD[1])+' left and save to REG'+str(CMD[2])
@@ -89,6 +103,42 @@ def describe(game,IAR):
 		else: 		command = 'None'
 	else:	command='None'
 	return command
+def load(f=None):
+	'''
+	loads a save file unto the game.
+
+	Keyword arguments:
+	game -- CPU object
+	f -- saved file that shoug
+	'''
+	if f!=None:
+		exec(open(f).read())
+	else:
+		DESCRIPTION = lambda: ''
+		HINT		= lambda: ''
+		INPUT		= lambda: []
+		OUTPUT		= lambda: ['2']
+		RAM			= lambda: ['00000000']*2**8
+	game = CPU(	description=DESCRIPTION(),
+				hint=HINT(),
+				inputlist=INPUT(),
+				output=OUTPUT(),
+				ram=RAM(),
+				sound=beep)
+	return game
+def loadMenu():
+	'''changes mode to load menu'''
+	global MODE, KEYS_BINDINGS
+	MODE,KEYS_BINDINGS = 'LEVEL LOAD',key_bindings_menu
+def saveMenu():
+	'''goes to the save mode menu'''
+	global MODE, KEYS_BINDINGS
+	MODE,KEYS_BINDINGS = 'SAVE',key_bindings_saveMenu
+def unloadMenu():
+	'''returns to the game mode'''
+	global MODE, KEYS_BINDINGS
+	MODE,KEYS_BINDINGS = 'GAME',key_bindings_game
+
 
 class SOUND:
 	def __init__(self,tune = 0):
@@ -402,47 +452,6 @@ window = pyglet.window.Window()
 screen_elements={}
 prev_elements=screen_elements.copy()
 
-
-def load(f=None):
-	'''
-	loads a save file unto the game.
-
-	Keyword arguments:
-	game -- CPU object
-	f -- saved file that shoug
-	'''
-	if f!=None:
-		exec(open(f).read())
-	else:
-		DESCRIPTION = lambda: ''
-		HINT		= lambda: ''
-		INPUT		= lambda: []
-		OUTPUT		= lambda: ['2']
-		RAM			= lambda: ['00000000']*2**8
-	game = CPU(	description=DESCRIPTION(),
-				hint=HINT(),
-				inputlist=INPUT(),
-				output=OUTPUT(),
-				ram=RAM(),
-				sound=beep)
-	return game
-
-#load('levels/sandbox.cpu')
-
-def loadMenu():
-	'''changes mode to load menu'''
-	global MODE, KEYS_BINDINGS
-	MODE,KEYS_BINDINGS = 'LEVEL LOAD',key_bindings_menu
-
-def saveMenu():
-	'''goes to the save mode menu'''
-	global MODE, KEYS_BINDINGS
-	MODE,KEYS_BINDINGS = 'SAVE',key_bindings_saveMenu
-
-def unloadMenu():
-	'''returns to the game mode'''
-	global MODE, KEYS_BINDINGS
-	MODE,KEYS_BINDINGS = 'GAME',key_bindings_game
 
 loadMenu()
 @window.event
