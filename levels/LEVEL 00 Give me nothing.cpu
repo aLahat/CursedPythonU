@@ -6,8 +6,12 @@ def HINT():
 
 def INPUT():
 	return []
+
 def OUTPUT(input=None):
 	return ['00000000']
 
 def RAM():
 	return ['0'*8]*2**8
+
+def VICTORY():
+	return "That wasn't too hard?"

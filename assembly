@@ -116,6 +116,7 @@ def load(f=None):
 	f -- saved file that shoug
 	'''
 	DESCRIPTION = lambda: ''
+	VICTORY 	= lambda: ''
 	HINT		= lambda: ''
 	INPUT		= lambda: []
 	OUTPUT		= lambda: None
@@ -132,12 +133,16 @@ def load(f=None):
 			OUTPUT = level.OUTPUT
 		if 'RAM' in dir(level):
 			RAM = level.RAM
+		if 'VICTORY' in dir(level):
+			VICTORY = level.VICTORY
 	game = CPU(	description=DESCRIPTION(),
 				hint=HINT(),
 				inputlist=INPUT(),
 				output=OUTPUT(),
 				ram=RAM(),
-				sound=beep)
+				sound=beep,
+				victory=VICTORY(),
+				messege=messege)
 	return game
 def loadMenu():
 	'''changes mode to load menu'''
@@ -152,7 +157,19 @@ def unloadMenu():
 	global MODE, KEYS_BINDINGS
 	MODE,KEYS_BINDINGS = 'GAME',key_bindings_game
 
-
+class MESSEGE:
+	def __init__(self):
+		self.MESSEGE = None
+	def __call__(self,text):
+		self.MESSEGE = text
+	def __str__(self):
+		if self.MESSEGE == None: return ''
+		return self.MESSEGE
+	def __nonzero__(self):
+		if self.MESSEGE != None: return True
+		else: return False
+	def clear(self):
+		self.MESSEGE = None
 
 class SOUND:
 	def __init__(self,tune = 0,vol=0.5):
@@ -181,18 +198,22 @@ class CPU:
 					inputlist=[],
 					output = None,
 					ram = None,
-					sound=None):
+					sound=None,
+					messege = None,
+					victory = ''):
 		if ram == None: self.RAM = ['0'*8]*(2**8)
 		else: 		 self.RAM = (ram + ['0'*8]*(2**8))[:2**8]
 		self.hint=hint
 		self.description=description
 		self.expectedOut = output
-		self.sound	= sound
-		self.origRAM = self.RAM[:]
+		self.sound	=  sound
+		self.messege= messege
+		self.victory= victory
+		self.origRAM= self.RAM[:]
 		self.fontSize	= 14
 		self.run	= False
 		self.speeds	= [0.01,0.1,0.25,0.5,1]
-		self.speedi	= 3
+		self.speedi	= 0
 		self.speed	= self.speeds [self.speedi]
 		self.STEP	= 0
 		self.output	= []
@@ -206,9 +227,9 @@ class CPU:
 		play=False
 		t0 = time.clock()
 		self.registers = [	'00000000',
-					'00000000',
-					'00000000',
-					'00000000']
+							'00000000',
+							'00000000',
+							'00000000']
 		self.ACC = '0'*8
 		self.flags = {'carry':0,'larger':0,'equal':0,'zero':0}
 		self.highlighted  = 0
@@ -224,7 +245,6 @@ class CPU:
 			sys.exit()
 		return ram
 	def step(self,dt=0):
-
 		self.STEP += 1
 		cmd = self.RAM[self.IAR]
 		self.CMD = translate(self.RAM[self.IAR])
@@ -287,14 +307,12 @@ class CPU:
                 	self.IAR  = self.IAR%2**8
 			if self.sound != None:
 				self.sound(cmd[-4:])
-
 		if self.CMD[0]=='JMPR':
 			self.IAR = int(self.registers[self.CMD[2]],2)
 		if self.CMD[0]=='JMP':
 			self.IAR = int(self.RAM[(self.IAR+1)%2**8],2)
 			if self.sound != None:
 				self.sound(cmd[-4:])
-
 		if self.CMD[0]=='JMPIF':
 			for flag in self.CMD[1:]:
 				if self.flags[flag]=='1':
@@ -317,11 +335,18 @@ class CPU:
 				self.output.append(self.registers[b])
 			self.IAR += 1
 			self.IAR  = self.IAR%2**8
-
-		if self.output == self.expectedOut:
-			self.success=True
-			if self.run: self.play()
-			self.sound.victory()
+		if not self.success:
+			if self.output == self.expectedOut:
+				self.success=True
+				if self.run: self.play()
+				if self.sound != None:
+					self.sound.victory()
+				if self.messege != None:
+					if self.STEP == 1:
+						text = 'Task complete in '+str(self.STEP)+' step.\n'+self.victory
+					else:
+						text = 'Task complete in '+str(self.STEP)+' steps.\n'+self.victory
+					self.messege(text)
 	def inputLoad(self,input):
 		self.input,self.inputBak = input, input
 	def action_upHighlighted(self,n=1):
@@ -412,6 +437,15 @@ class LEVELMENU:
 	def right(self):
 		self.modeSelected=(self.modeSelected+1)%len(self.modes)
 		self.refresh()
+	def get_next(self):
+		if len(self.files)<self.selected+1:
+			selected = 'levels/credits.cpu'
+		else:
+			selected = self.files[self.selected+1]
+		print selected
+		newGame = load(selected)
+		for att,value in newGame.__dict__.items():
+			self.game.__dict__[att]=value
 
 class GAMEMENU:
 	def __init__(self,game,sound):
@@ -422,7 +456,8 @@ class GAMEMENU:
 
 SHIFT=False
 beep = SOUND(tune=0)
-game = CPU(sound=beep)
+messege = MESSEGE()
+game = CPU(sound=beep,messege = messege)
 menu = LEVELMENU(game)
 gameMenu = GAMEMENU(game,beep)
 
@@ -444,22 +479,13 @@ key_bindings_game={
 	(key.ENTER,NOSHIFTKEY)	:('Step',		game.step),
 	(key.R,NOSHIFTKEY)		:('Reset',		game.reset),
 	(key.R,SHIFTKEY)		:('ResetRAM',	game.resetRAM),
-	(65451,NOSHIFTKEY)		:('Speed+',		game.action_speedUp),
-	(43,NOSHIFTKEY)			:('Speed+',		game.action_speedUp),
-	(65453,NOSHIFTKEY)		:('Speed-',		game.action_speedDown),
-	(45,NOSHIFTKEY)			:('Speed-',		game.action_speedDown),
+	#(65451,NOSHIFTKEY)		:('Speed+',		game.action_speedUp),
+	#(43,NOSHIFTKEY)			:('Speed+',		game.action_speedUp),
+	#(65453,NOSHIFTKEY)		:('Speed-',		game.action_speedDown),
+	#(45,NOSHIFTKEY)			:('Speed-',		game.action_speedDown),
 	(key.SPACE,NOSHIFTKEY)	:('Play/Pause',	game.play),
 	(key.L,NOSHIFTKEY)		:('Load',		lambda : loadMenu()),
 	(key.S,NOSHIFTKEY)		:('save',		lambda : saveMenu()),
-	}
-key_bindings_menu={
-	(key.UP,NOSHIFTKEY)		:('',			menu.up),
-	(key.DOWN,NOSHIFTKEY)	:('',			menu.down),
-	(key.RIGHT,NOSHIFTKEY)	:('',			menu.right),
-	(key.LEFT,NOSHIFTKEY)	:('',			menu.left),
-	(key.ENTER,NOSHIFTKEY)	:('select',		menu.select),
-	(key.L,NOSHIFTKEY)		:('back',		lambda : unloadMenu()),
-	(key.BACKSPACE,NOSHIFTKEY):('back',		lambda : unloadMenu()),
 	}
 key_bindings_saveMenu={
 	(key.UP,NOSHIFTKEY)		:('',			menu.up),
@@ -470,16 +496,28 @@ key_bindings_saveMenu={
 	(key.L,NOSHIFTKEY)		:('back',		lambda : unloadMenu()),
 	(key.BACKSPACE,NOSHIFTKEY):('back',		lambda : unloadMenu()),
 	}
-
+key_bindings_menu={
+	(key.UP,NOSHIFTKEY)		:('',			menu.up),
+	(key.DOWN,NOSHIFTKEY)	:('',			menu.down),
+	(key.RIGHT,NOSHIFTKEY)	:('',			menu.right),
+	(key.LEFT,NOSHIFTKEY)	:('',			menu.left),
+	(key.ENTER,NOSHIFTKEY)	:('select',		menu.select),
+	(key.L,NOSHIFTKEY)		:('back',		lambda : unloadMenu()),
+	(key.BACKSPACE,NOSHIFTKEY):('back',		lambda : unloadMenu()),
+	}
+key_bindings_messege={
+	(key.BACKSPACE,NOSHIFTKEY)	:('OK',		lambda: messege.clear()),
+	(key.ENTER,NOSHIFTKEY)		:('Next',	lambda: [messege.clear(),menu.get_next()])
+	}
 
 KEYS_BINDINGS = key_bindings_game
-display=['DESCRIPTION','HELP',]
+display=['DESCRIPTION','HELP']
 pyglet.font.add_file('assets/Andale-Mono.ttf')
 Font = 'Andale-Mono.ttf'
 window = pyglet.window.Window()
 screen_elements={}
 prev_elements=screen_elements.copy()
-
+MESSEGE = None
 
 #loadMenu()
 MODE = 'GAME'
@@ -489,7 +527,30 @@ def on_draw():
 	X=window.width//100
 	Y=window.height//100
 	font_size=window.width//115
-	if MODE == 'GAME':
+	if messege:
+		global KEYS_BINDINGS
+		KEYS_BINDINGS = key_bindings_messege
+		lines = []
+		line = ''
+		length = 120
+		for word in str(messege).split(' '):
+			if len(line)+len(word)>length:
+				lines.append(line[:-1])
+				line = ''
+			line += word+' '
+		lines.append(line)
+		lines = '\n'.join(lines).split('\n')
+		for n,line in enumerate(lines):
+			pyglet.text.Label(
+                        	line,
+    	                	x=window.width*.2,
+            	        	y=window.height*0.8-n*(window.height*0.05),
+                    		font_size=font_size*2,
+                    		font_name=Font,
+                    		).draw()
+	elif MODE == 'GAME':
+		global KEYS_BINDINGS
+		KEYS_BINDINGS = key_bindings_game
 		global screen_elements
 		global prev_elements
 		IAR = game.IAR
@@ -675,6 +736,7 @@ def on_draw():
 			input = (game.input)[:items]
 			output= (game.output)[::-1][:items]
 			height = window.height*0.28
+			
 			for n,x in enumerate(input):
 				pyglet.text.Label(
 	                        	' '+x,
