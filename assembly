@@ -421,7 +421,7 @@ class GAMEMENU:
 
 
 SHIFT=False
-beep = SOUND(tune=8)
+beep = SOUND(tune=0)
 game = CPU(sound=beep)
 menu = LEVELMENU(game)
 gameMenu = GAMEMENU(game,beep)
@@ -473,7 +473,7 @@ key_bindings_saveMenu={
 
 
 KEYS_BINDINGS = key_bindings_game
-display=['IO','HELP','DESCRIPTION']
+display=['DESCRIPTION','HELP',]
 pyglet.font.add_file('assets/Andale-Mono.ttf')
 Font = 'Andale-Mono.ttf'
 window = pyglet.window.Window()
@@ -481,7 +481,8 @@ screen_elements={}
 prev_elements=screen_elements.copy()
 
 
-loadMenu()
+#loadMenu()
+MODE = 'GAME'
 @window.event
 def on_draw():
 	window.clear()
@@ -642,19 +643,6 @@ def on_draw():
 				if n>=rows:
 					n=0
 					j+=1
-		elif display[0]=='IO':
-			rows=8
-			input = (['INPUT:']+game.input)[:rows]
-			output= (game.output+['OUTPUT:'])[::-1][:rows]
-			for j,lines in enumerate([input,output]):
-				for n,line in enumerate(lines):
-					pyglet.text.Label(
-		                        	line,
-	        	                	x=window.width*.5+j*window.width//(4),
-	                	        	y=window.height//4-n*window.height//(4*(rows+1)),
-	                        		font_size=font_size*1.5,
-	                        		font_name=Font,
-	                        		).draw()
 		elif display[0]=='DESCRIPTION':
 			if SHIFT:
 				text = 'Hint: '+game.hint
@@ -680,6 +668,35 @@ def on_draw():
 	                    		font_size=font_size*1.5,
 	                    		font_name=Font,
 	                    		).draw()
+
+		#IO
+		for _ in '_':
+			items = 6
+			input = (game.input)[:items]
+			output= (game.output)[::-1][:items]
+			height = window.height*0.28
+			for n,x in enumerate(input):
+				pyglet.text.Label(
+	                        	' '+x,
+	    	                	x=window.width*.5-(n+1)*window.width*0.5/items,
+	            	        	y=height,
+	                    		font_size=font_size*1.2,
+	                    		font_name=Font,
+	                    		).draw()
+			for n,x in enumerate(output):
+				pyglet.text.Label(
+	                        	' '+x,
+	    	                	x=window.width*.505+(n)*window.width*0.5/items,
+	            	        	y=height,
+	                    		font_size=font_size*1.2,
+	                    		font_name=Font,
+	                    		).draw()
+			a,b,c,d = window.width*.495,window.width*.505,height*1.1,height*0.98
+			pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	0,d,window.width,d)))
+			pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	0,c,window.width,c)))
+			pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	b,c,b,d)))
+			pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	a,c,a,d)))
+
 		prev_elements=screen_elements.copy()
 
 	elif MODE == 'LEVEL LOAD':
