@@ -13,6 +13,7 @@ from glob import glob
 import imp
 from tkinter import *
 from tkinter import ttk
+import os
 
 
 instructions='''1000 ADD   RA,RB
@@ -123,6 +124,7 @@ def load(f=None):
 	RAM			= lambda: ['00000000']*2**8
 	if f!=None:
 		level = imp.load_source('level', f)
+		os.remove(f+'c')
 		if "DESCRIPTION" in dir(level):
 			DESCRIPTION = level.DESCRIPTION
 		if 'HINT' in dir(level):
@@ -736,7 +738,7 @@ def on_draw():
 			input = (game.input)[:items]
 			output= (game.output)[::-1][:items]
 			height = window.height*0.28
-			
+
 			for n,x in enumerate(input):
 				pyglet.text.Label(
 	                        	' '+x,
