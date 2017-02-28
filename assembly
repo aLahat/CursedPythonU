@@ -205,6 +205,8 @@ class CPU:
 					victory = ''):
 		if ram == None: self.RAM = ['0'*8]*(2**8)
 		else: 		 self.RAM = (ram + ['0'*8]*(2**8))[:2**8]
+		self.ramBak = self.RAM[:]
+		self.rememberRam = True
 		self.hint=hint
 		self.description=description
 		self.expectedOut = output
@@ -247,6 +249,9 @@ class CPU:
 			sys.exit()
 		return ram
 	def step(self,dt=0):
+		if self.rememberRam:
+			self.ramBak = self.RAM[:]
+			self.rememberRam = False
 		self.STEP += 1
 		cmd = self.RAM[self.IAR]
 		self.CMD = translate(self.RAM[self.IAR])
@@ -397,6 +402,8 @@ class CPU:
 		self.ACC = '0'*8
 		self.flags = {'carry':0,'larger':0,'equal':0,'zero':0}
 		self.output=[]
+		self.RAM = self.ramBak
+		self.rememberRam = True
 		if self.run: self.play()
 	def resetRAM(self):
 		self.reset()
@@ -405,6 +412,7 @@ class CPU:
 		self.run = not(self.run)
 		if self.run:
 			clock.schedule_interval(self.step,self.speed)
+
 		else:
 			clock.unschedule(self.step)
 
