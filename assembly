@@ -286,7 +286,7 @@ class CPU:
 			self.IAR += 1
 			self.IAR  = self.IAR%2**8
 		if self.CMD[0]=='SHL':
-			self.registers[self.CMD[2]] = (self.registers[self.CMD[1]])+'0'[-8:]
+			self.registers[self.CMD[2]] = (self.registers[self.CMD[1]]+'0')[-8:]
 			self.IAR += 1
 			self.IAR  = self.IAR%2**8
 		if self.CMD[0]=='NOT':
@@ -908,10 +908,13 @@ def on_draw():
 			if n>=rows:
 				n=0
 				c+=1
+key_held = []
 @window.event
 def on_key_press(symbol, modifiers):
 	#if symbol == key.H:
 	#	display.append(display.pop(0))
+	key_held.append(symbol)
+	print key_held
 	if (symbol,modifiers) in KEYS_BINDINGS:
 		KEYS_BINDINGS[(symbol,modifiers)][1]()
 
@@ -922,6 +925,7 @@ def on_key_press(symbol, modifiers):
 		SHIFT = True
 @window.event
 def on_key_release(symbol, modifiers):
+	key_held.remove(symbol)
 	if symbol in [key.LSHIFT,key.RSHIFT]:
 		global SHIFT
 		SHIFT = False
