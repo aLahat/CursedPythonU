@@ -137,10 +137,11 @@ def load(f=None):
 			RAM = level.RAM
 		if 'VICTORY' in dir(level):
 			VICTORY = level.VICTORY
+	IN = INPUT()
 	game = CPU(	description=DESCRIPTION(),
 				hint=HINT(),
-				inputlist=INPUT(),
-				output=OUTPUT(),
+				inputlist=IN,
+				output=OUTPUT(IN),
 				ram=RAM(),
 				sound=beep,
 				victory=VICTORY(),
@@ -198,7 +199,7 @@ class CPU:
 	def __init__(self,description='',
 					hint='',
 					inputlist=[],
-					output = None,
+					output = [],
 					ram = None,
 					sound=None,
 					messege = None,
@@ -209,7 +210,7 @@ class CPU:
 		self.rememberRam = True
 		self.hint=hint
 		self.description=description
-		self.expectedOut = output
+		self.expectedOut = output[:]
 		self.sound	=  sound
 		self.messege= messege
 		self.victory= victory
@@ -452,7 +453,8 @@ class LEVELMENU:
 		if len(self.files)<self.selected+1:
 			selected = 'levels/credits.cpu'
 		else:
-			selected = self.files[self.selected+1]
+			self.selected+=1
+			selected = self.files[self.selected]
 		print selected
 		newGame = load(selected)
 		for att,value in newGame.__dict__.items():
