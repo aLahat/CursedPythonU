@@ -325,7 +325,7 @@ class CPU:
 				if self.flags[flag]=='1':
 					self.IAR = int(self.RAM[(self.IAR+1)%2**8],2)
 					return None
-			self.IAR += 1
+			self.IAR += 2
 			self.IAR  = self.IAR%2**8
 		if self.CMD[0]=='CLF':
 			self.flags = {'carry':0,'larger':0,'equal':0,'zero':0}
