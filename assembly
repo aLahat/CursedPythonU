@@ -402,6 +402,7 @@ class CPU:
 		self.ACC = '0'*8
 		self.flags = {'carry':0,'larger':0,'equal':0,'zero':0}
 		self.output=[]
+		self.input = self.inputBak[:]
 		self.RAM = self.ramBak
 		self.rememberRam = True
 		if self.run: self.play()
@@ -460,6 +461,9 @@ class LEVELMENU:
 class GAMEMENU:
 	def __init__(self,game,sound):
 		pass
+		options = {
+			'Volume':(10,[i*5 for i in range(21)]),
+		}
 	def __call__(self):
 		pass
 
