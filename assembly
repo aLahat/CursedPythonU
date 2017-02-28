@@ -16,22 +16,30 @@ from tkinter import ttk
 import os
 
 
-instructions='''1000 ADD   RA,RB
-1001 SHR   RA,RB
-1010 SHL   RA,RB
-1011 NOT   RA,RB
-1100 AND   RA,RB
-1101 OR    RA,RB
-1110 XOR   RA,RB
-1111 CMP   RA,RB
-0000 LD    RA,RB
-0001 ST    RA,RB
-0010 DATA  RB,DATA
-0011 JUMPR RB
-0100 JMP   Addr
-0101 JMPIF CAEZ,Addr
-0110 CLF
-0111 IO	From,RB
+instructions='''1000 Add RA to RB
+1001 Shift right RA to RB
+1010 Shift left RA to RB
+1011 Not RA to RB
+1100 RA and RB to RB
+1101 RA or RB to RB
+1110 RA exclussive or RB to RB
+1111 Compare RA to RB
+0000 Load address in RA to RB
+0001 Save RB to address in RA
+0010 Load next bit to RB
+0011 Jump to adress in RB
+0100 Jump to adress in next byte
+0101 Jump if carry/>/=/0
+0110 Clear flags
+0111 00=in to RB,11=out from RB
+'''
+extraInstructions=''' 0000 00  00
+[cmd][RA][RB]
+The first four letters codes the command. The remaining four letters
+code the RA and RB which indicate which registers the command shoud
+use.
+Some commands don't use RA and RB, such as 'jump if' (0101) were
+instead of RA and RB those four bits code for which flags to use.
 '''
 def col_major(alist, sublen):
 	"""
@@ -311,8 +319,8 @@ class CPU:
 			self.IAR  = self.IAR%2**8
 		if self.CMD[0]=='DATA':
 			self.registers[self.CMD[1]]=self.RAM[(self.IAR+1)%2**8]
-                	self.IAR += 2
-                	self.IAR  = self.IAR%2**8
+			self.IAR += 2
+			self.IAR  = self.IAR%2**8
 			if self.sound != None:
 				self.sound(cmd[-4:])
 		if self.CMD[0]=='JMPR':
@@ -455,7 +463,6 @@ class LEVELMENU:
 		else:
 			self.selected+=1
 			selected = self.files[self.selected]
-		print selected
 		newGame = load(selected)
 		for att,value in newGame.__dict__.items():
 			self.game.__dict__[att]=value
@@ -527,7 +534,7 @@ key_bindings_messege={
 	}
 
 KEYS_BINDINGS = key_bindings_game
-display=['DESCRIPTION','HELP']
+display=['HELP','DESCRIPTION']
 pyglet.font.add_file('assets/Andale-Mono.ttf')
 Font = 'Andale-Mono.ttf'
 window = pyglet.window.Window()
@@ -647,7 +654,7 @@ def on_draw():
 		#FLAGS
 		n=0
 		for flag,value in game.flags.items():
-			NAME	= flag+':\t'
+			NAME	= flag+':'*(7-len(flag))
 			VAL	= str(value)
 			X	= window.width//100*33
 			Y	= window.height//50*(-n*2)+window.height//10*2
@@ -704,22 +711,36 @@ def on_draw():
 			LABEL.draw()
 		#help
 		if display[0]=='HELP':
-			lines = instructions.split('\n')
-			n=0
-			j=0
-			rows = 8
-			for line in lines:
-				pyglet.text.Label(
-	                        	line,
-	                        	x=window.width*.5+j*window.width//(4),
-	                        	y=window.height//4-n*window.height//(4*(rows+1)),
-	                        	font_size=font_size*1.5,
-	                        	font_name=Font,
-	                        	).draw()
-				n+=1
-				if n>=rows:
-					n=0
-					j+=1
+			if SHIFT:
+				lines = extraInstructions.split('\n')
+				n=0
+				rows = 8
+				for line in lines:
+					pyglet.text.Label(
+		                        	line,
+		                        	x=window.width*.45,
+		                        	y=window.height//4-n*window.height//(4*(rows+1)),
+		                        	font_size=font_size*1.5,
+		                        	font_name=Font,
+		                        	).draw()
+					n+=1
+			else:
+				lines = instructions.split('\n')
+				n=0
+				j=0
+				rows = 8
+				for line in lines:
+					pyglet.text.Label(
+		                        	line,
+		                        	x=window.width*.45+j*window.width*(1-0.45)//(2),
+		                        	y=window.height//4-n*window.height//(4*(rows+1)),
+		                        	font_size=font_size*1.5,
+		                        	font_name=Font,
+		                        	).draw()
+					n+=1
+					if n>=rows:
+						n=0
+						j+=1
 		elif display[0]=='DESCRIPTION':
 			if SHIFT:
 				text = 'Hint: '+game.hint
@@ -845,7 +866,7 @@ def on_key_press(symbol, modifiers):
 		KEYS_BINDINGS[(symbol,modifiers)][1]()
 
 	else:
-		print key._key_names[symbol],modifiers
+		print(key._key_names[symbol],modifiers)
 	if symbol in [key.LSHIFT,key.RSHIFT]:
 		global SHIFT
 		SHIFT = True
