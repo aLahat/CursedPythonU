@@ -163,6 +163,10 @@ def saveMenu():
 	'''goes to the save mode menu'''
 	global MODE, KEYS_BINDINGS
 	MODE,KEYS_BINDINGS = 'SAVE',key_bindings_saveMenu
+def loadOptMenu():
+	'''goes to the options mode menu'''
+	global MODE, KEYS_BINDINGS
+	MODE,KEYS_BINDINGS = 'OPTIONS',key_bindings_optMenu
 def unloadMenu():
 	'''returns to the game mode'''
 	global MODE, KEYS_BINDINGS
@@ -469,20 +473,38 @@ class LEVELMENU:
 
 class GAMEMENU:
 	def __init__(self,game,sound):
-		pass
-		options = {
-			'Volume':(10,[i*5 for i in range(21)]),
-		}
+		self.sound = sound
+		self.options = [
+			[
+			'Volume',	10,	[i*5 for i in range(21)]],
+			]
+		self.sel = 0
+
 	def __call__(self):
 		pass
+	def up(self):
+		self.sel = (self.sel+1)%len(self.options)
 
+	def down(self):
+		self.sel = (self.sel-1)%len(self.options)
+	def left(self):
+		if self.options[self.sel][1]>0:
+			self.options[self.sel][1]=self.options[self.sel][1]-1
+	def right(self):
+		if self.options[self.sel][1]<len(self.options[self.sel][2]):
+			self.options[self.sel][1]=self.options[self.sel][1]+1
+	def select(self):
+		for a,b,c in self.options:
+			if a=='Volume': self.sound.player.volume=c[b]/100.0
+			print a,c[b]
+		pass
 
 SHIFT=False
 beep = SOUND(tune=0)
 messege = MESSEGE()
 game = CPU(sound=beep,messege = messege)
 menu = LEVELMENU(game)
-gameMenu = GAMEMENU(game,beep)
+optMenu = GAMEMENU(game,beep)
 
 SHIFTKEY,NOSHIFTKEY=17,16
 
@@ -509,7 +531,9 @@ key_bindings_game={
 	(key.SPACE,NOSHIFTKEY)	:('Play/Pause',	game.play),
 	(key.L,NOSHIFTKEY)		:('Load',		lambda : loadMenu()),
 	(key.S,NOSHIFTKEY)		:('save',		lambda : saveMenu()),
+	(key.M,NOSHIFTKEY)		:('Menu',		lambda : loadOptMenu()),
 	}
+
 key_bindings_saveMenu={
 	(key.UP,NOSHIFTKEY)		:('',			menu.up),
 	(key.DOWN,NOSHIFTKEY)	:('',			menu.down),
@@ -519,20 +543,28 @@ key_bindings_saveMenu={
 	(key.L,NOSHIFTKEY)		:('back',		lambda : unloadMenu()),
 	(key.BACKSPACE,NOSHIFTKEY):('back',		lambda : unloadMenu()),
 	}
-key_bindings_menu={
-	(key.UP,NOSHIFTKEY)		:('',			menu.up),
-	(key.DOWN,NOSHIFTKEY)	:('',			menu.down),
-	(key.RIGHT,NOSHIFTKEY)	:('',			menu.right),
-	(key.LEFT,NOSHIFTKEY)	:('',			menu.left),
-	(key.ENTER,NOSHIFTKEY)	:('select',		menu.select),
-	(key.L,NOSHIFTKEY)		:('back',		lambda : unloadMenu()),
-	(key.BACKSPACE,NOSHIFTKEY):('back',		lambda : unloadMenu()),
+key_bindings_optMenu={
+	(key.UP,NOSHIFTKEY)		:('',			optMenu.up),
+	(key.DOWN,NOSHIFTKEY)	:('',			optMenu.down),
+	(key.RIGHT,NOSHIFTKEY)	:('',			optMenu.right),
+	(key.LEFT,NOSHIFTKEY)	:('',			optMenu.left),
+	(key.ENTER,NOSHIFTKEY)	:('back',		lambda : [unloadMenu(),optMenu.select()]),
+	(key.M,NOSHIFTKEY)		:('back',		lambda : [unloadMenu(),optMenu.select()]),
+	(key.BACKSPACE,NOSHIFTKEY):('back',		lambda : [unloadMenu(),optMenu.select()]),
 	}
 key_bindings_messege={
 	(key.BACKSPACE,NOSHIFTKEY)	:('OK',		lambda: messege.clear()),
 	(key.ENTER,NOSHIFTKEY)		:('Next',	lambda: [messege.clear(),menu.get_next()])
 	}
-
+key_bindings_menu={
+	(key.UP,NOSHIFTKEY)		:('',			menu.up),
+	(key.DOWN,NOSHIFTKEY)	:('',			menu.down),
+	(key.RIGHT,NOSHIFTKEY)	:('',			menu.right),
+	(key.LEFT,NOSHIFTKEY)	:('',			menu.left),
+	(key.ENTER,NOSHIFTKEY)	:('Select',		lambda : [unloadMenu(),menu.select()]),
+	(key.L,NOSHIFTKEY)		:('back',		lambda : unloadMenu()),
+	(key.BACKSPACE,NOSHIFTKEY):('back',		lambda : unloadMenu()),
+	}
 KEYS_BINDINGS = key_bindings_game
 display=['HELP','DESCRIPTION']
 pyglet.font.add_file('assets/Andale-Mono.ttf')
@@ -816,9 +848,27 @@ def on_draw():
 			x=window.width*0.15,
 			y=window.height*.8,
 			font_size=font_size*1.7,
-			#background_color=(255,255,255,0),
 				)
 		LABEL.draw()
+
+	elif MODE == 'OPTIONS':
+		for n,x in  enumerate(optMenu.options):
+			a,b,c = x
+			pyglet.text.Label(
+				a,
+				x=window.width*0.2,
+				y=window.height*.8 - n * (window.height//30),
+				font_size=font_size*2,
+					).draw()
+			wordWidth = max(map(len,map(str,c)))*window.height//50
+			for j in range(len(c)):
+				pyglet.text.Label(
+					str(c[j]),
+					x=window.width*0.25 + (j-b)*wordWidth,
+					y=window.height*.8 - (n+1) * window.height//30,
+					font_size=font_size*2,
+					color=(255,255,255,255) if j==b else  (100,100,100,255) ,
+						).draw()
 	#bottom
 	for _ in '_':
 		n,c=0,0
