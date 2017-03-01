@@ -15,32 +15,6 @@ from tkinter import *
 from tkinter import ttk
 import os
 
-
-instructions='''1000 Add RA to RB
-1001 Shift right RA to RB
-1010 Shift left RA to RB
-1011 Not RA to RB
-1100 RA and RB to RB
-1101 RA or RB to RB
-1110 RA exclussive or RB to RB
-1111 Compare RA to RB
-0000 Load address in RA to RB
-0001 Save RB to address in RA
-0010 Load next bit to RB
-0011 Jump to adress in RB
-0100 Jump to adress in next byte
-0101 Jump if carry/>/=/0
-0110 Clear flags
-0111 00=in to RB,11=out from RB
-'''
-extraInstructions=''' 0000 00  00
-[cmd][RA][RB]
-The first four letters codes the command. The remaining four letters
-code the RA and RB which indicate which registers the command shoud
-use.
-Some commands don't use RA and RB, such as 'jump if' (0101) were
-instead of RA and RB those four bits code for which flags to use.
-'''
 def col_major(alist, sublen):
 	"""
 	Turns list to nested list (matrix)
@@ -171,6 +145,28 @@ def unloadMenu():
 	'''returns to the game mode'''
 	global MODE, KEYS_BINDINGS
 	MODE,KEYS_BINDINGS = 'GAME',key_bindings_game
+
+class STYLES:
+	def __init__(self,style='Default'):
+		self.load(style)
+	def load(self,style='Default'):
+		self.styles = imp.load_source('styles','assets/styles.py').styles
+		os.remove('assets/styles.pyc')
+		self.style = style
+	 	self.instructions = open('assets/instructions.txt').read()
+		self.instructionsHint = open('assets/instructionsHint.txt').read()
+		self.styleNames = self.styles.keys()
+
+	def __getattr__(self,att):
+		if  att == 'instructions':
+			return self.instructions
+		elif att == 'instructionsHint':
+			return self.instructionsHint
+		elif not att in self.styles[self.style]:
+			raise Exception('Missing '+repr(att)+' in '+self.style)
+		else:
+			return self.styles[self.style][att]
+
 
 class MESSEGE:
 	def __init__(self):
@@ -472,11 +468,16 @@ class LEVELMENU:
 			self.game.__dict__[att]=value
 
 class GAMEMENU:
-	def __init__(self,game,sound):
+	def __init__(self,game,sound,styles):
 		self.sound = sound
+		self.styles = styles
 		self.options = [
 			[
 			'Volume',	10,	[i*5 for i in range(21)]],
+			[
+			'Style', self.styles.styleNames.index(self.styles.style),
+			self.styles.styleNames
+			]
 			]
 		self.sel = 0
 
@@ -491,20 +492,22 @@ class GAMEMENU:
 		if self.options[self.sel][1]>0:
 			self.options[self.sel][1]=self.options[self.sel][1]-1
 	def right(self):
-		if self.options[self.sel][1]<len(self.options[self.sel][2]):
+		if self.options[self.sel][1]<(len(self.options[self.sel][2])-1):
 			self.options[self.sel][1]=self.options[self.sel][1]+1
 	def select(self):
 		for a,b,c in self.options:
-			if a=='Volume': self.sound.player.volume=c[b]/100.0
-			print a,c[b]
-		pass
+			if a=='Volume':
+				self.sound.player.volume=c[b]/100.0
+			if a=='Style':
+				self.styles.load(c[b])
 
 SHIFT=False
 beep = SOUND(tune=0)
 messege = MESSEGE()
 game = CPU(sound=beep,messege = messege)
 menu = LEVELMENU(game)
-optMenu = GAMEMENU(game,beep)
+style = STYLES()
+optMenu = GAMEMENU(game,beep,style)
 
 SHIFTKEY,NOSHIFTKEY=17,16
 
@@ -570,6 +573,8 @@ display=['HELP','DESCRIPTION']
 pyglet.font.add_file('assets/Andale-Mono.ttf')
 Font = 'Andale-Mono.ttf'
 window = pyglet.window.Window()
+
+pyglet.gl.glClearColor(*style.background)
 screen_elements={}
 prev_elements=screen_elements.copy()
 MESSEGE = None
@@ -578,6 +583,7 @@ MESSEGE = None
 MODE = 'GAME'
 @window.event
 def on_draw():
+	pyglet.gl.glClearColor(*style.background)
 	window.clear()
 	X=window.width//100
 	Y=window.height//100
@@ -602,6 +608,7 @@ def on_draw():
             	        	y=window.height*0.8-n*(window.height*0.05),
                     		font_size=font_size*2,
                     		font_name=Font,
+							color=style.messegeCol
                     		).draw()
 	elif MODE == 'GAME':
 		global KEYS_BINDINGS
@@ -621,10 +628,11 @@ def on_draw():
 					FS 	= font_size
 					LABEL	= pyglet.text.Label(
 							VAL,
-		        				x=X,
+		        			x=X,
 							y=Y,
 							font_size=FS,
-							font_name=Font
+							font_name=Font,
+							color=style.RAMcol
 		        				)
 					screen_elements[NAME]=LABEL
 				elif screen_elements[NAME].text!=VAL:
@@ -640,9 +648,10 @@ def on_draw():
 					FS 	= font_size
 					LABEL	= pyglet.text.Label(
 							VAL,
-		        				x=X,
+	        				x=X,
 							y=Y,
 							font_size=FS,
+							color=style.nRAMcol
 		        				)
 					screen_elements[NAME]=LABEL
 				elif screen_elements[NAME].text!=VAL:
@@ -664,6 +673,7 @@ def on_draw():
 						x=X,
 						y=Y,
 						font_size=FS,
+						color=style.IAR
 						)
 				screen_elements[NAME]=LABEL
 			elif screen_elements[NAME].text!=VAL:
@@ -679,7 +689,8 @@ def on_draw():
 			LABEL	= pyglet.text.Label(
 					NAME+': '+VAL,
 					x=X,y=Y,
-					font_size=FS
+					font_size=FS,
+					color=style.REG
 					)
 			LABEL.draw()
 			screen_elements[NAME]=(VAL,X,Y,FS,LABEL)
@@ -694,17 +705,23 @@ def on_draw():
 			LABEL	= pyglet.text.Label(
 					NAME+': '+VAL,
 					x=X,y=Y,
-					font_size=FS
+					font_size=FS,
+					color=style.flags
 					)
 			LABEL.draw()
 			screen_elements[NAME]=(VAL,X,Y,FS,LABEL)
 			n+=1
+		a,b,c=window.width*.44,window.height*0.048,window.height*0.28*0.98
+		pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	a,b,a,c)))
+		pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	0,b,window.width,b)))
+
 		#describe curr AIR
 		LABEL	= pyglet.text.Label(
 				describe(game,IAR),
 				x=window.width//100,
 				y=window.height//50*(1*2)+window.height//10*2,
-				font_size=font_size*2
+				font_size=font_size*2,
+				color=style.currCMD
 				)
 		LABEL.draw()
 		#describe curr selected
@@ -712,9 +729,13 @@ def on_draw():
 				str(int(game.RAM[game.highlighted],2))+'::'+describe(game,game.highlighted),
 				x=window.width//10*4,
 				y=window.height//20*19,
-				font_size=font_size*2
+				font_size=font_size*2,
+				color=style.selCMD
 				)
 		LABEL.draw()
+		height = window.height*0.94
+		pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	0,height,window.width,height)))
+
 		#CURRENT IAR
 		for _ in '_':
 			IARx = screen_elements['RAM'+str(IAR)].x
@@ -738,13 +759,13 @@ def on_draw():
 					y=headLabel.y,
 					font_size=headLabel.font_size,
 					font_name=Font,
-					color=(0,255,0,255)
+					color=style.selCol
 					)
 			LABEL.draw()
 		#help
 		if display[0]=='HELP':
 			if SHIFT:
-				lines = extraInstructions.split('\n')
+				lines = style.instructionsHint.split('\n')
 				n=0
 				rows = 8
 				for line in lines:
@@ -754,10 +775,11 @@ def on_draw():
 		                        	y=window.height//4-n*window.height//(4*(rows+1)),
 		                        	font_size=font_size*1.5,
 		                        	font_name=Font,
+									color=style.help
 		                        	).draw()
 					n+=1
 			else:
-				lines = instructions.split('\n')
+				lines = style.instructions.split('\n')
 				n=0
 				j=0
 				rows = 8
@@ -768,6 +790,7 @@ def on_draw():
 		                        	y=window.height//4-n*window.height//(4*(rows+1)),
 		                        	font_size=font_size*1.5,
 		                        	font_name=Font,
+									color=style.help
 		                        	).draw()
 					n+=1
 					if n>=rows:
@@ -793,10 +816,11 @@ def on_draw():
 			for n,line in enumerate(TEXT.split('\n')):
 				pyglet.text.Label(
 	                        	line,
-	    	                	x=window.width*.5,
+	    	                	x=window.width*.45,
 	            	        	y=window.height//4-n*window.height//(4*(8+1)),
 	                    		font_size=font_size*1.5,
 	                    		font_name=Font,
+								color=style.description
 	                    		).draw()
 
 		#IO
@@ -813,6 +837,7 @@ def on_draw():
 	            	        	y=height,
 	                    		font_size=font_size*1.2,
 	                    		font_name=Font,
+								color=style.imput
 	                    		).draw()
 			for n,x in enumerate(output):
 				pyglet.text.Label(
@@ -821,6 +846,7 @@ def on_draw():
 	            	        	y=height,
 	                    		font_size=font_size*1.2,
 	                    		font_name=Font,
+								color=style.output
 	                    		).draw()
 			a,b,c,d = window.width*.495,window.width*.505,height*1.1,height*0.98
 			pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2f', (	0,d,window.width,d)))
@@ -839,7 +865,7 @@ def on_draw():
 				x=window.width//4,
 				y=window.height//2+(n-selected)*window.height//40,
 				font_size=font_size*1.7,
-				color=(255,255,255,255) if selected==n else  (255,255,0,255) ,
+				color= style.levelSel if selected==n else  style.levelUnsel ,
 				#background_color=(255,255,255,0),
 					)
 			LABEL.draw()
@@ -848,7 +874,8 @@ def on_draw():
 			x=window.width*0.15,
 			y=window.height*.8,
 			font_size=font_size*1.7,
-				)
+			color= style.levelName
+			)
 		LABEL.draw()
 
 	elif MODE == 'OPTIONS':
@@ -859,6 +886,7 @@ def on_draw():
 				x=window.width*0.2,
 				y=window.height*.8 - n * (window.height//30),
 				font_size=font_size*2,
+				color=style.OptNameSel if n==optMenu.sel else  style.OptNameUnSel,
 					).draw()
 			wordWidth = max(map(len,map(str,c)))*window.height//50
 			for j in range(len(c)):
@@ -867,7 +895,7 @@ def on_draw():
 					x=window.width*0.25 + (j-b)*wordWidth,
 					y=window.height*.8 - (n+1) * window.height//30,
 					font_size=font_size*2,
-					color=(255,255,255,255) if j==b else  (100,100,100,255) ,
+					color=style.OptOptionSel if j==b else  style.OptOptionUnSel ,
 						).draw()
 	#bottom
 	for _ in '_':
@@ -892,7 +920,7 @@ def on_draw():
 										x=c*window.width//(cols+1),
 										y=0*window.height//40+(n+0.2)*window.height//40,
 										font_size=font_size*1.5,
-										color=(0,255,255,255),
+										color=style.keyFunction,
 										#background_color=(255,255,255,0),
 										)
 			LABEL.draw()
@@ -900,7 +928,7 @@ def on_draw():
 										x=(.9+2*c)*window.width//(2*(cols+1)),
 										y=0*window.height//40+(n+0.2)*window.height//40,
 										font_size=font_size*1.5,
-										color=(255,0,0,255),
+										color=style.keyBinding,
 										#background_color=(255,255,255,0),
 										)
 			LABEL.draw()

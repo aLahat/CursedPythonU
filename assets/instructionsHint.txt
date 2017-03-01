@@ -1,0 +1,7 @@
+  0000 00  00
+[cmd][RA][RB]
+The first four letters codes the command. The remaining four letters
+code the RA and RB which indicate which registers the command shoud
+use.
+Some commands don't use RA and RB, such as 'jump if' (0101) were
+instead of RA and RB those four bits code for which flags to use.

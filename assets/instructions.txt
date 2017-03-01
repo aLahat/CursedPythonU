@@ -1,0 +1,16 @@
+1000 Add RA to RB
+1001 Shift right RA to RB
+1010 Shift left RA to RB
+1011 Not RA to RB
+1100 RA and RB to RB
+1101 RA or RB to RB
+1110 RA exclusive or RB to RB
+1111 Compare RA to RB
+0000 Load address in RA to RB
+0001 Save RB to address in RA
+0010 Load next bit to RB
+0011 Jump to address in RB
+0100 Jump to address in next byte
+0101 Jump if carry/>/=/0
+0110 Clear flags
+0111 00=in to RB,11=out from RB
