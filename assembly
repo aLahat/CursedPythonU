@@ -106,7 +106,8 @@ def load(f=None):
 	RAM			= lambda: ['00000000']*2**8
 	if f!=None:
 		level = imp.load_source('level', f)
-		os.remove(f+'c')
+		try:os.remove(f+'c')
+		except:pass
 		if "DESCRIPTION" in dir(level):
 			DESCRIPTION = level.DESCRIPTION
 		if 'HINT' in dir(level):
@@ -151,9 +152,10 @@ class STYLES:
 		self.load(style)
 	def load(self,style='Default'):
 		self.styles = imp.load_source('styles','assets/styles.py').styles
-		os.remove('assets/styles.pyc')
+		try:os.remove('assets/styles.pyc')
+		except: pass
 		self.style = style
-	 	self.instructions = open('assets/instructions.txt').read()
+		self.instructions = open('assets/instructions.txt').read()
 		self.instructionsHint = open('assets/instructionsHint.txt').read()
 		self.styleNames = self.styles.keys()
 
@@ -956,7 +958,7 @@ def on_key_press(symbol, modifiers):
 	#if symbol == key.H:
 	#	display.append(display.pop(0))
 	key_held.append(symbol)
-	print key_held
+	print(key_held)
 	if (symbol,modifiers) in KEYS_BINDINGS:
 		KEYS_BINDINGS[(symbol,modifiers)][1]()
 
