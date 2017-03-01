@@ -1,0 +1,22 @@
+def DESCRIPTION():
+	return 'For each number in the input, just add one to it and output it'
+
+def HINT():
+	return """Example:
+	00000000 => 00000001 (0   => 1)
+	10100101 => 10100110 (165 => 166)
+	10011000 => 10011001 (152 => 153)
+	"""
+
+def INPUT():
+	import random
+	return [''.join([random.choice(['0','1']) for _ in range(8)]) for _ in range(20)]
+def OUTPUT(input=None):
+	out = ["{0:b}".format(int(x,2)+1)[-8:].zfill(8) for x in input]
+	return out
+
+def RAM():
+	return ['0'*8]*2**8
+
+def VICTORY():
+	return 'Add another victory'

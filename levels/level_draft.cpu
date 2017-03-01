@@ -1,0 +1,17 @@
+def DESCRIPTION():
+	return 'string'
+
+def HINT():
+	return 'string'
+
+def INPUT():
+	return [list of 8 bits binary numbers]
+
+def OUTPUT(input=None):
+	return [list of 8 bits binary numbers]
+
+def RAM():
+	return [list of 8 bits binary numbers]
+
+def VICTORY():
+	return string
