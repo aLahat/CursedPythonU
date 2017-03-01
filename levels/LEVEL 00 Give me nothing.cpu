@@ -2,7 +2,7 @@ def DESCRIPTION():
 	return 'Hi, lets test if nothing works, could you just output nothing("00000000")'
 
 def HINT():
-	return 'you can press "h" in order to circle trhough the commands, input/output, and instructions'
+	return 'you can press "h" in order to circle through the commands, input/output, and instructions'
 
 def INPUT():
 	return []

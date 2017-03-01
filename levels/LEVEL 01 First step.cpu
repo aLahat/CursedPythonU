@@ -2,7 +2,7 @@ def DESCRIPTION():
 	return 'For each input item just output said item'
 
 def HINT():
-	return 'There are only a few inputs, why bother with loops'
+	return 'you can press "h" in order to circle through the commands, input/output, and instructions'
 
 def INPUT():
 	return ['11111111',

@@ -1,0 +1,24 @@
+def DESCRIPTION():
+	return 'For each number in the input, just subtract one to it and output it'
+
+def HINT():
+	return """Example:
+	00000001 => 00000000 (  0 =>   1)
+	10100101 => 10100100 (165 => 154)
+	10011000 => 10010111 (152 => 151)
+
+	This might be harder than you think, There is no shame in using google, But I
+	"""
+
+def INPUT():
+	import random
+	return [''.join([random.choice(['0','1']) for _ in range(8)]) for _ in range(10)]
+def OUTPUT(input=None):
+	out = ["{0:b}".format(int(x,2)-1)[-8:].zfill(8) for x in input]
+	return out
+
+def RAM():
+	return ['0'*8]*2**8
+
+def VICTORY():
+	return 'Add another victory'

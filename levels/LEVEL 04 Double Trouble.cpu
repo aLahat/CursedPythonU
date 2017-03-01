@@ -1,0 +1,24 @@
+def DESCRIPTION():
+	return 'For each number in the input, just double it'
+
+def HINT():
+	return """Example:
+	00000000 => 00000000 (  0 => 1)
+	00010000 => 00100000 ( 16 =>  32)
+
+	Interesting how doubling just move the numbers left
+	"""
+
+def INPUT():
+	import random
+	return [''.join([random.choice(['0','1']) for _ in range(8)]) for _ in range(10)]
+def OUTPUT(input=None):
+	out = ["{0:b}".format(int(x,2)*2)[-8:].zfill(8) for x in input]
+	return out
+
+def RAM():
+	return ['0'*8]*2**8
+
+def VICTORY():
+	return 'Cool so just shifting a base 2 number left doubles it, ' \
+					'kinda like adding a zero in base 10 multiplies by 10.'

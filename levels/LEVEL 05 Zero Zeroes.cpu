@@ -1,0 +1,24 @@
+def DESCRIPTION():
+	return 'Our data has some zeroes in it. Can you remove them?'
+
+def HINT():
+	return """you can use compare command (1111) to see if a registry contains a zero, and then use jump if zero(0101 0001) to do something in that case.
+	"""
+
+def INPUT():
+	import random
+	l=10
+	out = [''.join([random.choice(['0','1']) for _ in range(8)]) for _ in range(l)]
+	for i in range(l):
+		if random.choice([True,False,False]):
+			out[i]='00000000'
+	return out
+def OUTPUT(input=None):
+	out = list(filter(lambda x: '1' in x, input))
+	return out
+
+def RAM():
+	return ['0'*8]*2**8
+
+def VICTORY():
+	return 'Hurray, you have mastered conditional (if) and loops. That is all you need in order to write any program in existence'

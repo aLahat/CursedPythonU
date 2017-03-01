@@ -1,0 +1,44 @@
+import random
+def DESCRIPTION():
+	return 	'There is a program in the input, can you load it and run it?' \
+					'\n The first byte in input is a the number of commands in the' \
+					'program.'
+def HINT():
+	return 'instead of having to change address references, how about just loading it in the beginning of the ram?'
+
+def INPUT():
+	programs  = { ('00100000',
+								'00000001',
+								'01111101',
+								'10000001',
+								'01000000',
+								'00000010'):
+													('00000000',
+													'00000001',
+													'00000010',
+													'00000011',
+													'00000100'),
+							}
+	return random.choice(programs.keys())
+
+def OUTPUT(input=None):
+	programs  = { ('00100000',
+								'00000001',
+								'01111101',
+								'10000001',
+								'01000000',
+								'00000010'):
+													('00000000',
+													'00000001',
+													'00000010',
+													'00000011',
+													'00000100'),
+							}
+	return programs[input]
+
+def RAM():
+	return ['0'*8]*2**8
+
+def VICTORY():
+	return 	"Amazing, being able to load programs in a computer was one of the " \
+					"First big steps of computing thank you Grace Hopper."

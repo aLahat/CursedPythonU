@@ -206,7 +206,7 @@ class CPU:
 	def __init__(self,description='',
 					hint='',
 					inputlist=[],
-					output = [],
+					output = [None],
 					ram = None,
 					sound=None,
 					messege = None,
@@ -470,12 +470,17 @@ class GAMEMENU:
 	def __init__(self,game,sound,styles):
 		self.sound = sound
 		self.styles = styles
+		fonts = [x.replace('assets/','').replace('.ttf','') for x in glob('assets/*.ttf')]
 		self.options = [
 			[
-			'Volume',	10,	[i*5 for i in range(21)]],
+			'Volume',	10,	[i*5 for i in range(21)]
+			],
 			[
 			'Style', self.styles.styleNames.index(self.styles.style),
 			self.styles.styleNames
+			],
+			[
+			'Font', 0, fonts
 			]
 			]
 		self.sel = 0
@@ -499,6 +504,10 @@ class GAMEMENU:
 				self.sound.player.volume=c[b]/100.0
 			if a=='Style':
 				self.styles.load(c[b])
+			if a=='Font':
+				global font
+				pyglet.font.add_file('assets/'+c[b]+'.ttf')
+				font = c[b]
 
 SHIFT=False
 beep = SOUND(tune=0)
@@ -632,7 +641,7 @@ def on_draw():
 		        			x=X,
 							y=Y,
 							font_size=FS,
-							font_name=Font,
+							font_name='assets/Cousine-Italic.ttf',
 							color=style.RAMcol
 		        				)
 					screen_elements[NAME]=LABEL
@@ -835,8 +844,6 @@ def on_draw():
 			try: 	output = output[::-1][:size//(max(map(len,output))+1)]
 			except:	output=['']
 			items = max(map(len,[input,output]))
-			print items
-
 			for n,x in enumerate(input):
 				pyglet.text.Label(
 	                        	' '+x,
