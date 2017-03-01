@@ -317,7 +317,7 @@ class CPU:
 			self.IAR += 1
 			self.IAR  = self.IAR%2**8
 		if self.CMD[0]=='DATA':
-			self.registers[self.CMD[1]]=self.RAM[(self.IAR+1)%2**8]
+			self.registers[self.CMD[2]]=self.RAM[(self.IAR+1)%2**8]
 			self.IAR += 2
 			self.IAR  = self.IAR%2**8
 			if self.sound != None:
@@ -509,6 +509,8 @@ style = STYLES()
 optMenu = GAMEMENU(game,beep,style)
 
 SHIFTKEY,NOSHIFTKEY=17,16
+displayIO=[	lambda x: x,
+			lambda x: str(int(x,2))]
 
 key_bindings_game={
 	(key.H,NOSHIFTKEY)	:('Help',		lambda :display.append(display.pop(0))),
@@ -521,8 +523,8 @@ key_bindings_game={
 	(key.RIGHT,NOSHIFTKEY)	:('',			game.action_rightCursor),
 	(key.NUM_0,NOSHIFTKEY)	:('0',			game.action_0),
 	(key.NUM_1,NOSHIFTKEY)	:('1',			game.action_1),
-	(key._0,NOSHIFTKEY)		:('0',			game.action_0),
-	(key._1,NOSHIFTKEY)		:('1',			game.action_1),
+	(key._0,NOSHIFTKEY)		:('',			game.action_0),
+	(key._1,NOSHIFTKEY)		:('',			game.action_1),
 	(key.ENTER,NOSHIFTKEY)	:('Step',		game.step),
 	(key.R,NOSHIFTKEY)		:('Reset',		game.reset),
 	(key.R,SHIFTKEY)		:('ResetRAM',	game.resetRAM),
@@ -534,8 +536,8 @@ key_bindings_game={
 	(key.L,NOSHIFTKEY)		:('Load',		lambda : loadMenu()),
 	(key.S,NOSHIFTKEY)		:('save',		lambda : saveMenu()),
 	(key.M,NOSHIFTKEY)		:('Menu',		lambda : loadOptMenu()),
+	(key.I,NOSHIFTKEY)		:('IOdisplay',	lambda : displayIO.append(displayIO.pop(0))),
 	}
-
 key_bindings_saveMenu={
 	(key.UP,NOSHIFTKEY)		:('',			menu.up),
 	(key.DOWN,NOSHIFTKEY)	:('',			menu.down),
@@ -824,10 +826,16 @@ def on_draw():
 
 		#IO
 		for _ in '_':
-			items = 6
-			input = (game.input)[:items]
-			output= (game.output)[::-1][:items]
+			input = map(displayIO[0],game.input)
+			output= map(displayIO[0],game.output)
 			height = window.height*0.28
+			size = 60
+			try: input = input[:size//(max(map(len,input))+1)]
+			except: input=['']
+			try: 	output = output[::-1][:size//(max(map(len,output))+1)]
+			except:	output=['']
+			items = max(map(len,[input,output]))
+			print items
 
 			for n,x in enumerate(input):
 				pyglet.text.Label(
@@ -836,7 +844,7 @@ def on_draw():
 	            	        	y=height,
 	                    		font_size=font_size*1.2,
 	                    		font_name=Font,
-								color=style.imput
+								color=style.input
 	                    		).draw()
 			for n,x in enumerate(output):
 				pyglet.text.Label(
