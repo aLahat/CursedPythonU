@@ -488,10 +488,10 @@ class GAMEMENU:
 	def __call__(self):
 		pass
 	def up(self):
-		self.sel = (self.sel+1)%len(self.options)
+		self.sel = (self.sel-1)%len(self.options)
 
 	def down(self):
-		self.sel = (self.sel-1)%len(self.options)
+		self.sel = (self.sel+1)%len(self.options)
 	def left(self):
 		if self.options[self.sel][1]>0:
 			self.options[self.sel][1]=self.options[self.sel][1]-1
@@ -836,8 +836,8 @@ def on_draw():
 
 		#IO
 		for _ in '_':
-			input = map(displayIO[0],game.input)
-			output= map(displayIO[0],game.output)
+			input = list(map(displayIO[0],game.input))
+			output= list(map(displayIO[0],game.output))
 			height = window.height*0.28
 			size = 60
 			try: input = input[:size//(max(map(len,input))+1)]
@@ -936,7 +936,7 @@ def on_draw():
 			LABEL = pyglet.text.Label(	func,
 										x=c*window.width//(cols+1),
 										y=0*window.height//40+(n+0.2)*window.height//40,
-										font_size=font_size*1.5,
+										font_size=font_size*1.1,
 										color=style.keyFunction,
 										#background_color=(255,255,255,0),
 										)
@@ -944,7 +944,7 @@ def on_draw():
 			LABEL = pyglet.text.Label(	keys,
 										x=(.9+2*c)*window.width//(2*(cols+1)),
 										y=0*window.height//40+(n+0.2)*window.height//40,
-										font_size=font_size*1.5,
+										font_size=font_size*1.1,
 										color=style.keyBinding,
 										#background_color=(255,255,255,0),
 										)
