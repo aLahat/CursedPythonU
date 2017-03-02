@@ -51,7 +51,7 @@ def translate(cmd):
 	try:	out.append(cmdD[cmd[:4]])
 	except: out.append('')
 	if out[0]=='JMPIF':
-		out = out+filter(lambda x: x!='0',[b if a=='1' else '0' for a,b in zip(cmd[4:8],['carry','larger','equal','zero'])])
+		out = out+list(filter(lambda x: x!='0',[b if a=='1' else '0' for a,b in zip(cmd[4:8],['carry','larger','equal','zero'])]))
 	else:
 		try:	out.append(BIN[cmd[4:6]])
 		except: out.append('')
