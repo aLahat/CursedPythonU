@@ -161,7 +161,8 @@ class KEYMEM:
 				if self.keyTime[key]>self.keyDelay:
 					shift = SHIFTKEY if SHIFT else NOSHIFTKEY
 					if (key, shift) in KEYS_BINDINGS:
-						KEYS_BINDINGS[(key, shift)][1]()
+						if KEYS_BINDINGS[(key, shift)][0]=='':
+							KEYS_BINDINGS[(key, shift)][1]()
 				self.keyTime[key]+=dt
 		#pprint(self.keyTime)
 
@@ -550,8 +551,8 @@ key_bindings_game={
 	(key.RIGHT,SHIFTKEY)	:('',			lambda :game.action_downHighlighted(16)),
 	(key.LEFT,SHIFTKEY)	:('',			lambda :game.action_upHighlighted(16)),
 	(key.RIGHT,NOSHIFTKEY)	:('',			game.action_rightCursor),
-	(key.NUM_0,NOSHIFTKEY)	:('0',			game.action_0),
-	(key.NUM_1,NOSHIFTKEY)	:('1',			game.action_1),
+	(key.NUM_0,NOSHIFTKEY)	:('',			game.action_0),
+	(key.NUM_1,NOSHIFTKEY)	:('',			game.action_1),
 	(key._0,NOSHIFTKEY)		:('',			game.action_0),
 	(key._1,NOSHIFTKEY)		:('',			game.action_1),
 	(key.ENTER,NOSHIFTKEY)	:('Step',		game.step),
