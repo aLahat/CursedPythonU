@@ -7,34 +7,20 @@ def HINT():
 	return 'instead of having to change address references, how about just loading it in the beginning of the ram?'
 
 def INPUT():
-	programs  = { ('00100000',
+	program  = ['00100000',
 								'00000001',
 								'01111101',
 								'10000001',
 								'01000000',
-								'00000010'):
-													('00000000',
-													'00000001',
-													'00000010',
-													'00000011',
-													'00000100'),
-							}
-	return random.choice(programs.keys())
+								'00000010']
+	return program
 
 def OUTPUT(input=None):
-	programs  = { ('00100000',
-								'00000001',
-								'01111101',
-								'10000001',
-								'01000000',
-								'00000010'):
-													('00000000',
+	return ['00000000',
 													'00000001',
 													'00000010',
 													'00000011',
-													'00000100'),
-							}
-	return programs[input]
+													'00000100']
 
 def RAM():
 	return ['0'*8]*2**8
