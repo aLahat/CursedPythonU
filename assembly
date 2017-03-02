@@ -145,6 +145,26 @@ def unloadMenu():
 	global MODE, KEYS_BINDINGS
 	MODE,KEYS_BINDINGS = 'GAME',key_bindings_game
 
+class KEYMEM:
+	def __init__(self):
+		self.key_held=[]
+		self.keyTime={}
+		self.keyDelay=1
+	def __call__(self,dt):
+		for key in self.key_held:
+			if not key in self.keyTime:
+				self.keyTime[key]=0
+		for key in list(self.keyTime):
+			if not key in self.key_held:
+				del self.keyTime[key]
+			else:
+				if self.keyTime[key]>self.keyDelay:
+					shift = SHIFTKEY if SHIFT else NOSHIFTKEY
+					if (key, shift) in KEYS_BINDINGS:
+						KEYS_BINDINGS[(key, shift)][1]()
+				self.keyTime[key]+=dt
+		#pprint(self.keyTime)
+
 class STYLES:
 	def __init__(self,style='Default'):
 		self.load(style)
@@ -920,7 +940,6 @@ def on_draw():
 		else:		KEYS = list(filter(lambda x:x[1]==NOSHIFTKEY ,KEYS_BINDINGS))
 		KEYS = dict(zip(KEYS, [KEYS_BINDINGS[x] for x in KEYS]))
 		KEYS = dict((a[0],b[0]) for a,b in KEYS.items())
-		pprint (KEYS)
 		cols = (len(set([x for x in KEYS.values()]))-1)/rows
 		cols = 4
 		for func in sorted(set(KEYS.values())):
@@ -953,12 +972,16 @@ def on_draw():
 			if n>=rows:
 				n=0
 				c+=1
-key_held = []
+
+
+
+keyMem=KEYMEM()
+clock.schedule_interval(keyMem, 0.02)
 @window.event
 def on_key_press(symbol, modifiers):
 	#if symbol == key.H:
 	#	display.append(display.pop(0))
-	key_held.append(symbol)
+	keyMem.key_held.append(symbol)
 	#print(key_held)
 	if (symbol,modifiers) in KEYS_BINDINGS:
 		KEYS_BINDINGS[(symbol,modifiers)][1]()
@@ -970,7 +993,8 @@ def on_key_press(symbol, modifiers):
 		SHIFT = True
 @window.event
 def on_key_release(symbol, modifiers):
-	key_held.remove(symbol)
+	if symbol in keyMem.key_held:
+		keyMem.key_held.remove(symbol)
 	if symbol in [key.LSHIFT,key.RSHIFT]:
 		global SHIFT
 		SHIFT = False
@@ -980,6 +1004,9 @@ def on_resize(width, height):
 	global screen_elements
 	global prev_elements
 	screen_elements,prev_elements = {},{}
+
+
+
 #@window.event
 #def on_mouse_motion(x, y, dx, dy):
 #    pass
