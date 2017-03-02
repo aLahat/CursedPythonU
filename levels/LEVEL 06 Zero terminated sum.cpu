@@ -1,0 +1,32 @@
+def DESCRIPTION():
+	return 'Add the numbers in the input until a zero appears, When you get a zero output your current sum and continue from zero. Dont worry if your number gets too big.'
+
+def HINT():
+	return """need some tight loop control
+	"""
+
+def INPUT():
+	import random
+	l=10
+	out = [''.join(['0','0']+[random.choice(['0','1']) for _ in range(6)]) for _ in range(l)]
+	for i in range(l):
+		if random.choice([True,False,False]):
+			out[i]='00000000'
+	return out
+def OUTPUT(input=None):
+	out = []
+	s = 0
+	for i in input:
+		i=int(i,2)
+		if i == 0:
+			out.append("{0:b}".format(s)[-8:].zfill(8))
+			s=0
+		else:
+			s+=i
+	return out
+
+def RAM():
+	return ['0'*8]*2**8
+
+def VICTORY():
+	return 'Amazing job, This positive encouraging statements are meant to induce a Skinner box effect to make you keep playing.'
